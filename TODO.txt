@@ -1,6 +1,6 @@
 Segreteria:
 v) Inserisce gli esami sul server dell'università (salvare in un file o conservare in memoria il dato)
-    P.S.: cercare di pulire il buffer, in modo tale da non avere problemi di aggiunta/rimozione esami
+    P.S.: cercare di pulire il buffer, in modo tale da non avere problemi di aggiunta/rimozione esami e aggiungere criteri di inserimento
 -) Inoltra la richiesta di prenotazione degli studenti al server universitario
 -) Fornisce allo studente le date degli esami disponibili per l'esame scelto dallo studente
 
