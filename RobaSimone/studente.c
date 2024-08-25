@@ -40,7 +40,7 @@ int main() {
     printf("Connesso alla segreteria Esse4!\n");
     printf("1 - Vedi esami disponibili \n2 - Prenota un esame\n");
     printf("Scelta:");
-    scanf("%d", &(*richiesta_studente).TipoRichiesta);
+    scanf("%d", &richiesta_studente.TipoRichiesta);
     getchar();
 
 
@@ -53,8 +53,8 @@ int main() {
         
 
         printf("Nome esam eche vuoi cercare: ");
-        fgets((*richiesta_studente).esame.nome, 100, stdin);
-        (*richiesta_studente).esame.nome[strlen((*richiesta_studente).esame.nome) - 1] = '\000';
+        fgets(richiesta_studente.esame.nome, 100, stdin);
+        richiesta_studente.esame.nome[strlen(richiesta_studente.esame.nome) - 1] = '\000';
         fflush(stdin);
 
         if(richiesta_studente.esame.nome[0] != '\000')
@@ -63,7 +63,7 @@ int main() {
             socket_studente = ConnessioneSegreteria(socket_studente, &indirizzo_server_segreteria);
 
             //invio della richiesta alla segreteria
-            if (write(socket_studente, richiesta_studente, sizeof(*richiesta_studente)) != sizeof(*richiesta_studente)) {
+            if (write(socket_studente, &richiesta_studente, sizeof(richiesta_studente)) != sizeof(richiesta_studente)) {
                 perror("Write error 3");
                 exit(1);
             }
@@ -82,7 +82,7 @@ int main() {
                 //stampa di esami, ipoteticamente da dare un codice per la prenotazione
                 for(int i = 0; i < numero_esami; i++)
                 {
-                    printf("%d\t%s\t%s", i+1, esameCercato.nome, esameCercato.data);
+                    printf("%d\t%s\t%s\n", i+1, esameCercato[i].nome, esameCercato[i].data);
                 }
 
             } else {
@@ -116,7 +116,7 @@ int ConnessioneSegreteria(int socket_studente, struct sockaddr_in *indirizzo_ser
         exit(1);
     }
 
-    Connetti(socket_studente, (struct sockaddr *)indirizzo_server_segreteria, sizeof(*));
+    Connetti(socket_studente, (struct sockaddr *)indirizzo_server_segreteria, sizeof(*indirizzo_server_segreteria));
     return socket_studente;
 }
 

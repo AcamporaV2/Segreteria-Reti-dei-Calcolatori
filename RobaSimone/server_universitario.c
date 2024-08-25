@@ -37,12 +37,14 @@ int main() {
     universita_ascolto_socket = Socket(AF_INET, SOCK_STREAM,0);
 
     indirizzo_universita.sin_family = AF_INET;
-    indirizzo_universita.sin_addr.s_addr = hotnl(INADDR_ANY);
+    indirizzo_universita.sin_addr.s_addr = htonl(INADDR_ANY);
     indirizzo_universita.sin_port = htons(6940);
 
     Bind(universita_ascolto_socket, (struct sockaddr *) &indirizzo_universita, sizeof(indirizzo_universita));
 
     Ascolta(universita_ascolto_socket, 10);
+
+    printf("ascolto\n");
 
     while(1) 
     {
