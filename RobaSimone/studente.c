@@ -5,8 +5,13 @@
 #include <arpa/inet.h>
 #include "wrapper.h"
 
-#define SERVER_IP "127.0.0.1" // Indirizzo IP del server
-#define SERVER_PORT 12345      // Porta del server
+// Studente:
+// Chiede alla segreteria se ci siano esami disponibili per un corso
+// Invia una richiesta di prenotazione di un esame alla segreteria
+
+
+
+
 
 // Definizione della struttura per gli esami
 struct Esame {
@@ -14,49 +19,123 @@ struct Esame {
     char data[100];
 };
 
-typedef enum {
-    AGGIUNTA_ESAME,
-    RIMOZIONE_ESAME
-} TipoRichiesta;
+struct Richiesta {
+    int TipoRichiesta;
+    struct Esame esame;
+};
 
-// Funzione per inviare la richiesta di informazioni sugli esami alla segreteria
-void richiedi_informazioni_esami(int segreteria_socket) {
-    // Invia una richiesta di informazioni sugli esami al server
-    char buffer[1024];
-    sprintf(buffer, "INFORMAZIONI_ESAMI");
-    send(segreteria_socket, buffer, strlen(buffer), 0);
-    printf("Richiesta di informazioni sugli esami inviata al server.\n");
-}
+int ConnessioneSegreteria(int socket_studente, struct sockaddr_in *indirizzo_server_segreteria);
+void riceviListaEsami(int socket_studente, int numero_esami, struct Esame *esameCercato);
+int conto_esami(int socket_studente, int *numero_esami);
+
+
+
 
 int main() {
-    int studente_socket;
-    struct sockaddr_in server_addr;
+    int socket_studente;
+    struct sockaddr_in indirizzo_server_segreteria;
+    //Creiamo la richiesta_studente e decidiamo il tipo di richiesta
+    struct Richiesta richiesta_studente = {};
 
-    // Creazione del socket
-    studente_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if (studente_socket == -1) {
-        perror("Errore nella creazione del socket");
-        exit(EXIT_FAILURE);
+    printf("Connesso alla segreteria Esse4!\n");
+    printf("1 - Vedi esami disponibili \n2 - Prenota un esame\n");
+    printf("Scelta:");
+    scanf("%hd", &(*richiesta_studente).requestType);
+    getchar();
+
+
+    //gestione esame disponibile
+    if(richiesta_studente.TipoRichiesta == 1) 
+    {
+
+        int numero_esami= 0; //variabile per capire se ci stanno esami 
+        struct Esame *esameCercato;
+        
+
+        printf("Nome esam eche vuoi cercare: ");
+        fgets((*richiesta_studente).esame.nome, 100, stdin);
+        (*richiesta_studente).esame.nome[strlen((*richiesta_studente).esame.nome) - 1] = '\000';
+        fflush(stdin);
+
+        if(richiesta_studente.esame.nome[0] != '\000')
+        {   
+            //connessione alla segreteria
+            socket_studente = ConnessioneSegreteria(socket_studente, &indirizzo_server_segreteria);
+
+            //invio della richiesta alla segreteria
+            if (write(socket_studente, richiesta_studente, sizeof(*richiesta_studente)) != sizeof(*richiesta_studente)) {
+            perror("Write error 3");
+            exit(1);
+            }
+
+            //ricevo il numero di esami dalla segreteria
+            numero_esami = conto_esami(socket_studente, &numero_esami);
+
+            if(numero_esami > 0)
+            {
+                //dati per la lista di esami 
+                riceviListaEsami(socket_studente, numero_esami, esameCercato);
+
+                printf("Numero\tNome\tData\n");
+                printf("-----------------");
+
+                //stampa di esami, ipoteticamente da dare un codice per la prenotazione
+                for(int i = 0; i < numero_esami; i++)
+                {
+                    printf("%d\t%s\t%s", i+1, esameCercato.nome, esameCercato.data);
+                }
+
+            } else {
+                printf("non ci sono esami per il corso che hai cercato");
+                return 0;
+            }
+        }
+        
+    } else if (richiesta_studente.TipoRichiesta == 2)
+    {
+            //richiesta di prenotazione
     }
 
-    // Impostazione dei dettagli del server
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(SERVER_PORT);
-    server_addr.sin_addr.s_addr = inet_addr(SERVER_IP);
+    close(socket_studente);
+}
 
-    // Connessione alla segreteria
-    if (connect(studente_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
-        perror("Errore nella connessione al server");
-        exit(EXIT_FAILURE);
+
+
+
+
+int ConnessioneSegreteria(int socket_studente, struct sockaddr_in *indirizzo_server_segreteria)
+{
+    socket_studente = Socket(AF_INET, SOCK_STREAM, 0);
+
+    (*indirizzo_server_segreteria).sin_family = AF_INET;
+    (*indirizzo_server_segreteria).sin_port = htons(5000);
+
+    if(inet_pton(AF_INET, "127.0.0.1", &(*indirizzo_server_segreteria).sin_addr) <= 0)
+    {
+        fprintf(stderr,"errore pton compa");
+        exit(1);
     }
 
-    printf("Connessione alla segreteria stabilita.\n");
+    Connetti(socket_studente, (struct sockaddr *)indirizzo_server_segreteria, sizeof(*));
+    return socket_studente;
+}
 
-    // Richiedi informazioni sugli esami disponibili
-    richiedi_informazioni_esami(studente_socket);
+void riceviListaEsami(int socket_studente, int numero_esami, struct Esame *esameCercato)
+{
+    if(read(socket_studente, esameCercato, sizeof(struct Esame)*numero_esami)!=sizeof(struct Esame)*numero_esami)
+    {
+        perror("Errore ricezione lista esami");
+        exit(-1);
+    }
+}
 
-    // Chiusura della connessione
-    close(studente_socket);
 
-    return 0;
+int conto_esami(int socket_studente, int *numero_esami)
+{
+    if (read(socket_studente, numero_esami, sizeof(*numero_esami))!= sizeof(*numero_esami))
+    {
+        perror("Errore conto_esami");
+        exit(-1);
+    }
+    return (*numero_esami);
 }

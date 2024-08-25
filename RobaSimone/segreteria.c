@@ -5,24 +5,104 @@
 #include <arpa/inet.h>
 #include "wrapper.h"
 
-#define SERVER_IP "127.0.0.1" // Indirizzo IP del server
-#define SERVER_PORT 12345      // Porta del server
-
-int ascolto_studenti(int segreteria_ascolto_socket, struct sockaddr_in *indirizzo_segreteria);
-void esami_disponibili(struct Esame esame, int segreteria_connessione_socket);
-void invio_esame_server(int socket_esami, struct Richiesta ricezione_esami);
-int connessione_universita(int socket_esami, struct sockaddr_in *indirizzo_universita);
-
-// Definizione della struttura per gli esami e della richiesta
 struct Esame {
     char nome[100];
     char data[100];
 };
 
-struct Richiesta{
+struct Richiesta {
     int TipoRichiesta;
     struct Esame esame;
 };
+
+
+// Il file probabilmente con più roba, non sono sicuro funzioni all 100%
+// ma dovrebbe avere la connessione degli studenti e al server uni
+
+
+
+int ascolto_studenti(int segreteria_ascolto_socket, struct sockaddr_in *indirizzo_segreteria);
+void esami_disponibili(struct Esame esame, int segreteria_connessione_socket);
+void invio_esame_server(int socket_esami, struct Richiesta ricezione_esami);
+int connessione_universita(int socket_esami, struct sockaddr_in *indirizzo_universita);
+void salva_esame_su_file(struct Esame esame);
+void inserisci_nuovo_esame(void);
+
+
+
+int main() {
+    int segreteria_connessione_socket;
+    int segreteria_ascolto_socket;
+    struct sockaddr_in indirizzo_segreteria;
+    struct Richiesta richiesta_ricevuta;
+    int scelta;  // Variabile per la scelta dell'azione
+
+    segreteria_ascolto_socket = ascolto_studenti(segreteria_ascolto_socket, &indirizzo_segreteria);
+
+    while (1) {
+        // Chiedi all'utente cosa vuole fare
+        printf("Scegli un'azione:\n");
+        printf("1. Aggiungi un nuovo esame\n");
+        printf("2. Ascolta le richieste degli studenti\n");
+        printf("Inserisci la tua scelta: ");
+        scanf("%d", &scelta);
+        getchar();  // Consuma il newline lasciato da scanf
+
+        if (scelta == 1) {
+
+            inserisci_nuovo_esame();
+
+            printf("Vuoi aggiungere un altro esame o ascoltare le richieste degli studenti?\n");
+            printf("1. Aggiungi un altro esame\n");
+            printf("2. Ascolta le richieste degli studenti\n");
+            printf("Inserisci la tua scelta: ");
+            scanf("%d", &scelta);
+            getchar();  // Consuma il newline lasciato da scanf
+            if (scelta == 2) {
+                continue;  // Esce dall'aggiunta esame e passa all'ascolto degli studenti
+            }
+        } 
+
+        if (scelta == 2) {
+            // Gestione delle richieste degli studenti
+            segreteria_connessione_socket = Accetta(segreteria_ascolto_socket, (struct sockaddr*) NULL, NULL);
+
+            pid_t pid = fork();  // Creazione del processo figlio
+
+            if (pid < 0) {
+                perror("Errore nella fork controlla bene");
+                exit(EXIT_FAILURE);
+            }
+
+            if (pid == 0) {  // Processo figlio
+                close(segreteria_ascolto_socket);  // Il figlio non ha bisogno di questo socket
+
+                if (read(segreteria_connessione_socket, &richiesta_ricevuta, sizeof(struct Richiesta)) != sizeof(struct Richiesta)) {
+                    perror("read error");
+                    exit(-1);
+                }
+
+                if (richiesta_ricevuta.TipoRichiesta == 1) {
+                    esami_disponibili(richiesta_ricevuta.esame, segreteria_connessione_socket);
+                }
+
+                close(segreteria_connessione_socket);  // Chiude la connessione dopo aver gestito la richiesta
+                exit(0);  // Termina il processo figlio
+            } else {  // Processo padre
+                close(segreteria_connessione_socket);  // Il padre non ha bisogno di questo socket
+            }
+        } else {
+            printf("Scelta non valida. Riprova.\n");
+        }
+    }
+
+    close(segreteria_ascolto_socket);
+
+    return 0;
+}
+
+
+
 
 int ascolto_studenti(int segreteria_ascolto_socket, struct sockaddr_in *indirizzo_segreteria) {
 
@@ -44,7 +124,7 @@ void esami_disponibili(struct Esame esame, int segreteria_connessione_socket) {
     struct sockaddr_in indirizzo_universita;
     struct Richiesta ricezione_esami;
 
-    ricezione_esami.richiesta = 2;
+    ricezione_esami.TipoRichiesta = 2;
     ricezione_esami.esame = esame;
     socket_esami = connessione_universita(socket_esami, &indirizzo_universita);
     invio_esame_server(socket_esami, ricezione_esami);
@@ -75,133 +155,29 @@ int connessione_universita(int socket_esami, struct sockaddr_in *indirizzo_unive
 
     return socket_esami;
 }
+void salva_esame_su_file(struct Esame esame) {
+    FILE *file = fopen("esami.txt", "a");  // Apertura del file in modalità append
 
-int main() {
-    int segreteria_connessione_socket;
-    int segreteria_ascolto_socket;
-    int selezione;
-    struct sockaddr_in indirizzo_segreteria;
-    struct Richiesta richiesta_ricevuta;
+    if (file == NULL) {
+        perror("Errore apertura file esami.txt");
+        exit(1);
+    }
 
-    segreteria_ascolto_socket = ascolto_studenti(segreteria_ascolto_socket, &indirizzo_segreteria);
-
-    while (1) {
-
-        segreteria_connessione_socket = Accetta(segreteria_ascolto_socket, (struct sockaddr*) NULL, NULL);
-
-        if (read(segreteria_connesione_socket, &richiesta_ricevuta, sizeof(struct Richiesta)) != sizeof(struct Richiesta)) {
-            perror("read error 1");
-            exit(-1);
-        }
-
-        if (richiesta_ricevuta.TipoRichiesta = 1) {
-            esami_disponibili(richiesta_ricevuta.esame, segreteria_connesione_socker);
-        }
-
-        // printf("\nCiao, benvenuto nella segreteria, cosa vorresti fare?\n");
-        // printf("1 - Inserisci esame\n");
-        // printf("2 - Rimuovi esame\n");
-        // printf("3 - Richiesta di prenotazioni esami\n");
-        // printf("4 - Fornisci date disponibili\n");
-        // printf("5 - Esci\n");
-        // printf("============================================\n");
-
-    //     scanf("%d", &selezione);
-    //     getchar(); // Consuma il carattere di nuova linea rimasto nel buffer
-    //
-    //     switch (selezione) {
-    //     case 1:
-    //         // Input dal segretario: nome e data dell'esame
-    //         printf("Inserisci il nome dell'esame: ");
-    //         fgets(nome, sizeof(nome), stdin);
-    //         nome[strcspn(nome, "\n")] = '\0'; // Rimuove il carattere di nuova linea
-    //
-    //         printf("Inserisci la data dell'esame: ");
-    //         fgets(data, sizeof(data), stdin);
-    //         data[strcspn(data, "\n")] = '\0'; // Rimuove il carattere di nuova linea
-    //
-    //         // Copia i dati nella struttura
-    //         strncpy(esame.nome, nome, sizeof(esame.nome) - 1);
-    //         esame.nome[sizeof(esame.nome) - 1] = '\0';
-    //         strncpy(esame.data, data, sizeof(esame.data) - 1);
-    //         esame.data[sizeof(esame.data) - 1] = '\0';
-    //
-    //         // Invia il tipo di richiesta al server
-    //         {
-    //             TipoRichiesta tipo_richiesta = AGGIUNTA_ESAME;
-    //             if (send(segreteria_socket, &tipo_richiesta, sizeof(tipo_richiesta), 0) == -1) {
-    //                 perror("Errore nell'invio del tipo di richiesta");
-    //                 close(segreteria_socket);
-    //                 exit(EXIT_FAILURE);
-    //             }
-    //
-    //             // Invia i dati dell'esame
-    //             invia_richiesta_aggiunta_esame(segreteria_socket, esame);
-    //         }
-    //         break;
-    //     case 2:
-    //         // Input dal segretario: nome e data dell'esame
-    //         printf("Inserisci il nome dell'esame da rimuovere: ");
-    //         fgets(nome, sizeof(nome), stdin);
-    //         nome[strcspn(nome, "\n")] = '\0'; // Rimuove il carattere di nuova linea
-    //
-    //         printf("Inserisci la data dell'esame da rimuovere: ");
-    //         fgets(data, sizeof(data), stdin);
-    //         data[strcspn(data, "\n")] = '\0'; // Rimuove il carattere di nuova linea
-    //
-    //         // Copia i dati nella struttura
-    //         strncpy(esame.nome, nome, sizeof(esame.nome) - 1);
-    //         esame.nome[sizeof(esame.nome) - 1] = '\0';
-    //         strncpy(esame.data, data, sizeof(esame.data) - 1);
-    //         esame.data[sizeof(esame.data) - 1] = '\0';
-    //
-    //         // Invia il tipo di richiesta al server
-    //         {
-    //             TipoRichiesta tipo_richiesta = RIMOZIONE_ESAME;
-    //             if (send(segreteria_socket, &tipo_richiesta, sizeof(tipo_richiesta), 0) == -1) {
-    //                 perror("Errore nell'invio del tipo di richiesta");
-    //                 close(segreteria_socket);
-    //                 exit(EXIT_FAILURE);
-    //             }
-    //
-    //             // Invia i dati dell'esame
-    //             invia_richiesta_rimozione_esame(segreteria_socket, esame);
-    //         }
-    //         break;
-    //     case 5:
-    //         // Uscita dal loop e chiusura del socket
-    //         printf("Uscita dal programma.\n");
-    //         close(segreteria_socket);
-    //         exit(EXIT_SUCCESS);
-    //     default:
-    //         printf("Selezione non valida. Per favore, scegli di nuovo.\n");
-    //         break;
-    //     }
-    // }
-
-    // Chiusura della connessione
-    close(segreteria_socket);
-
-    return 0;
+    fprintf(file, "%s %s\n", esame.nome, esame.data);  // Scrittura dell'esame nel file
+    fclose(file);  // Chiusura del file
 }
 
-/*
-void invia_richiesta_aggiunta_esame(int server_socket, struct Esame esame) {
-    char buffer[1024];
-    snprintf(buffer, sizeof(buffer), "AGGIUNGI_ESAME %s %s", esame.nome, esame.data);
-    if (send(server_socket, buffer, strlen(buffer), 0) == -1) {
-        perror("Errore nell'invio del messaggio");
-        exit(EXIT_FAILURE);
-    }
-    printf("Richiesta di aggiunta esame inviata al server.\n");
-}
+void inserisci_nuovo_esame() {
+    struct Esame nuovo_esame;
 
-void invia_richiesta_rimozione_esame(int server_socket, struct Esame esame) {
-    char buffer[1024];
-    snprintf(buffer, sizeof(buffer), "RIMOZIONE_ESAME %s %s", esame.nome, esame.data);
-    if (send(server_socket, buffer, strlen(buffer), 0) == -1) {
-        perror("Errore nell'invio del messaggio");
-        exit(EXIT_FAILURE);
-    }
-    printf("Richiesta di rimozione esame inviata al server.\n");
-}*/
+    printf("Inserisci il nome dell'esame: ");
+    fgets(nuovo_esame.nome, sizeof(nuovo_esame.nome), stdin);
+    nuovo_esame.nome[strcspn(nuovo_esame.nome, "\n")] = '\0';  // Rimuovi newline
+
+    printf("Inserisci la data dell'esame (YYYY-MM-DD): ");
+    fgets(nuovo_esame.data, sizeof(nuovo_esame.data), stdin);
+    nuovo_esame.data[strcspn(nuovo_esame.data, "\n")] = '\0';  // Rimuovi newline
+
+    salva_esame_su_file(nuovo_esame);
+    printf("Esame aggiunto con successo!\n");
+}

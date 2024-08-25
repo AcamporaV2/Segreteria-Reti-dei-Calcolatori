@@ -5,8 +5,7 @@
 #include <arpa/inet.h>
 #include "wrapper.h"
 
-#define SERVER_PORT 12345      // Porta del server
-#define FILE_PATH "esami.txt"  // Percorso del file degli esami
+
 
 // Definizione della struttura per gli esami
 struct Esame {
@@ -14,193 +13,83 @@ struct Esame {
     char data[100];
 };
 
-typedef enum {
-    AGGIUNTA_ESAME,
-    RIMOZIONE_ESAME
-} TipoRichiesta;
-
-// Funzione per aggiungere un esame al file
-void aggiungi_esame(struct Esame esame) {
-    FILE *file = fopen(FILE_PATH, "a");
-    if (file == NULL) {
-        perror("Errore nell'apertura del file");
-        exit(EXIT_FAILURE);
-    }
-    fprintf(file, "%s %s\n", esame.nome, esame.data);
-    fclose(file);
-}
-
-void rimuovi_esame(struct Esame esame) {
-    FILE *file = fopen(FILE_PATH, "r");
-    if (file == NULL) {
-        perror("Errore nell'apertura del file");
-        exit(EXIT_FAILURE);
-    }
-
-    FILE *temp = fopen("temp.txt", "w");
-    if (temp == NULL) {
-        perror("Errore nella creazione del file temporaneo");
-        fclose(file);
-        exit(EXIT_FAILURE);
-    }
-
-    char nome[100], data[100];
-    int found = 0;
-    while (fscanf(file, "%99s %99s", nome, data) == 2) {
-        // Rimuovere eventuali caratteri di ritorno a capo dai dati letti
-        nome[strcspn(nome, "\n")] = '\0';
-        data[strcspn(data, "\n")] = '\0';
-
-        // Verifica la condizione di non corrispondenza
-        if (strcmp(nome, esame.nome) != 0 || strcmp(data, esame.data) != 0) {
-            fprintf(temp, "%s %s\n", nome, data);
-        } else {
-            found = 1;  // Indica che l'esame è stato trovato e rimosso
-        }
-    }
-
-    fclose(file);
-    fclose(temp);
-
-    if (remove(FILE_PATH) != 0) {
-        perror("Errore nella rimozione del file");
-        exit(EXIT_FAILURE);
-    }
-
-    if (rename("temp.txt", FILE_PATH) != 0) {
-        perror("Errore nella rinomina del file temporaneo");
-        exit(EXIT_FAILURE);
-    }
-
-    if (found) {
-        printf("Esame %s - %s rimosso con successo.\n", esame.nome, esame.data);
-    } else {
-        printf("Esame %s - %s non trovato.\n", esame.nome, esame.data);
-    }
-}
-
-// Funzione per gestire l'aggiunta di un esame
-void gestisci_aggiunta_esame(int client_socket, char* buffer) {
-    char nome[100], data[100];
-    if (sscanf(buffer, "AGGIUNGI_ESAME %99s %99s", nome, data) != 2) {
-        fprintf(stderr, "Formato della richiesta di aggiunta non valido\n");
-        return;
-    }
-
+struct Richiesta {
+    int TipoRichiesta;
     struct Esame esame;
-    strncpy(esame.nome, nome, sizeof(esame.nome) - 1);
-    esame.nome[sizeof(esame.nome) - 1] = '\0';
-    strncpy(esame.data, data, sizeof(esame.data) - 1);
-    esame.data[sizeof(esame.data) - 1] = '\0';
+};
 
-    printf("Ricevuta richiesta di aggiunta esame: %s - %s\n", esame.nome, esame.data);
-    aggiungi_esame(esame);
-}
 
-void gestisci_rimozione_esame(int client_socket, char* buffer) {
-    char nome[100], data[100];
-    // Usa sscanf per estrarre i dati dal buffer
-    if (sscanf(buffer, "RIMOZIONE_ESAME %99s %99s", nome, data) != 2) {
-        fprintf(stderr, "Formato della richiesta di rimozione non valido\n");
-        return;
-    }
 
-    struct Esame esame;
-    strncpy(esame.nome, nome, sizeof(esame.nome) - 1);
-    esame.nome[sizeof(esame.nome) - 1] = '\0';
-    strncpy(esame.data, data, sizeof(esame.data) - 1);
-    esame.data[sizeof(esame.data) - 1] = '\0';
+//Quello meno sviluppato, dovrebbe solo poter ricevere la richiesta di aggiunta per ora
 
-    printf("Ricevuta richiesta di rimozione esame: %s - %s\n", esame.nome, esame.data);
-    rimuovi_esame(esame);
-}
 
+
+// Funzione per aggiungere un esame al file 
+void aggiungi_esame_file(struct Esame); 
 
 int main() {
-    int server_socket, client_socket;
-    struct sockaddr_in server_addr, client_addr;
-    socklen_t client_addr_len;
+    int universita_connessione_socket;
+    int universita_ascolto_socket;
+    struct sockaddr_in indirizzo_universita;
+    struct Richiesta richiesta_ricevuta;
 
-    // Creazione del socket del server
-    server_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_socket == -1) {
-        perror("Errore nella creazione del socket");
-        exit(EXIT_FAILURE);
-    }
+    universita_ascolto_socket = Socket(AF_INET, SOCK_STREAM,0);
 
-    // Impostazione dei dettagli del server
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    server_addr.sin_port = htons(SERVER_PORT);
+    indirizzo_universita.sin_family = AF_INET;
+    indirizzo_universita.sin_addr.s_addr = hotnl(INADDR_ANY);
+    indirizzo_universita.sin_port = htons(6940);
 
-    // Bind del socket all'indirizzo e alla porta del server
-    if (bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
-        perror("Errore nel binding del socket");
-        exit(EXIT_FAILURE);
-    }
+    Bind(universita_ascolto_socket, (struct sockaddr *) &indirizzo_universita, sizeof(indirizzo_universita));
 
-    // Mettere il server in ascolto per le connessioni in entrata
-    if (listen(server_socket, 5) == -1) {
-        perror("Errore nell'ascolto delle connessioni");
-        exit(EXIT_FAILURE);
-    }
+    Ascolta(universita_ascolto_socket, 10);
 
-    printf("Server universitario in ascolto...\n");
+    while(1) 
+    {
 
-    while (1) {
-        // Accettare le connessioni dai client
-        client_addr_len = sizeof(client_addr);
-        client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &client_addr_len);
-        if (client_socket == -1) {
-            perror("Errore nell'accettare la connessione");
+        universita_connessione_socket = Accetta (universita_ascolto_socket, (struct sockaddr *)NULL, NULL);
+
+        pid_t pid = fork();  // Creazione del processo figlio
+
+         if (pid < 0) {
+            perror("Errore nella fork controlla bene");
             exit(EXIT_FAILURE);
         }
 
-        // Ricevere il tipo di richiesta dal client
-        TipoRichiesta tipo_richiesta;
-        if (recv(client_socket, &tipo_richiesta, sizeof(tipo_richiesta), 0) <= 0) {
-            perror("Errore nella ricezione del tipo di richiesta");
-            close(client_socket);
-            continue;
+
+        if(pid == 0) {
+
+            close(universita_ascolto_socket);
+
+            if(read(universita_connessione_socket, &richiesta_ricevuta, sizeof(struct Richiesta)) != sizeof(struct Richiesta))
+            {
+                perror("Qualche errore nel server amico");
+                exit(-1);
+            };
+
+            if(richiesta_ricevuta.TipoRichiesta == 1)
+            {
+                aggiungi_esame_file(richiesta_ricevuta.esame);
+            }
+            
         }
 
-        // Gestire la richiesta in base al tipo ricevuto
-        switch (tipo_richiesta) {
-        case AGGIUNTA_ESAME: {
-            // Ricevere i dati dell'esame dal client
-            char buffer[1024];
-            if (recv(client_socket, buffer, sizeof(buffer), 0) <= 0) {
-                perror("Errore nella ricezione dei dati dell'esame");
-                close(client_socket);
-                continue;
-            }
-            buffer[sizeof(buffer) - 1] = '\0';  // Assicurati che il buffer sia terminato
-            gestisci_aggiunta_esame(client_socket, buffer);
-            break;
-        }
-        case RIMOZIONE_ESAME: {
-            // Ricevere i dati dell'esame dal client
-            char buffer[1024];
-            if (recv(client_socket, buffer, sizeof(buffer), 0) <= 0) {
-                perror("Errore nella ricezione dei dati dell'esame");
-                close(client_socket);
-                continue;
-            }
-            buffer[sizeof(buffer) - 1] = '\0';  // Assicurati che il buffer sia terminato
-            gestisci_rimozione_esame(client_socket, buffer);
-            break;
-        }
-        default:
-            // Gestire un tipo di richiesta non valido
-            printf("Tipo di richiesta non valido\n");
-            break;
-        }
-
-        // Chiudi il socket del client dopo aver gestito la richiesta
-        close(client_socket);
     }
 
-    // Chiudi il socket del server alla fine dell'esecuzione
-    close(server_socket);
+
     return 0;
+}
+
+void aggiungi_esame_file(struct Esame esame) 
+{
+    FILE *Lista_esami;
+
+    if((Lista_esami = fopen("esami.txt)", "a+")) == NULL)
+    {
+        printf("errore apertura file o sce");
+        exit(1);
+    }
+
+    fwrite(&esame, sizeof(struct Esame), 1, Lista_esami);
+    fclose(Lista_esami);
+    printf("Esame aggiunto fratm");
 }
