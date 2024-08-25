@@ -40,7 +40,7 @@ int main() {
     printf("Connesso alla segreteria Esse4!\n");
     printf("1 - Vedi esami disponibili \n2 - Prenota un esame\n");
     printf("Scelta:");
-    scanf("%hd", &(*richiesta_studente).requestType);
+    scanf("%d", &(*richiesta_studente).TipoRichiesta);
     getchar();
 
 
@@ -64,8 +64,8 @@ int main() {
 
             //invio della richiesta alla segreteria
             if (write(socket_studente, richiesta_studente, sizeof(*richiesta_studente)) != sizeof(*richiesta_studente)) {
-            perror("Write error 3");
-            exit(1);
+                perror("Write error 3");
+                exit(1);
             }
 
             //ricevo il numero di esami dalla segreteria
@@ -93,7 +93,7 @@ int main() {
         
     } else if (richiesta_studente.TipoRichiesta == 2)
     {
-            //richiesta di prenotazione
+        //richiesta di prenotazione
     }
 
     close(socket_studente);

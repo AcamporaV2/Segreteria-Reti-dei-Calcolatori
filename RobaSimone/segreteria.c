@@ -25,7 +25,7 @@ int ascolto_studenti(int segreteria_ascolto_socket, struct sockaddr_in *indirizz
 void esami_disponibili(struct Esame esame, int segreteria_connessione_socket);
 void invio_esame_server(int socket_esami, struct Richiesta ricezione_esami);
 int connessione_universita(int socket_esami, struct sockaddr_in *indirizzo_universita);
-void salva_esame_su_file(struct Esame esame);
+void mandaEsameNuovoServer(struct Esame esame);
 void inserisci_nuovo_esame(void);
 
 
@@ -48,6 +48,8 @@ int main() {
         scanf("%d", &scelta);
         getchar();  // Consuma il newline lasciato da scanf
 
+
+        //inizio parte inserimento esame
         if (scelta == 1) {
 
             inserisci_nuovo_esame();
@@ -62,6 +64,9 @@ int main() {
                 continue;  // Esce dall'aggiunta esame e passa all'ascolto degli studenti
             }
         } 
+        //Fine parte inserimento esami
+
+
 
         if (scelta == 2) {
             // Gestione delle richieste degli studenti
@@ -76,6 +81,8 @@ int main() {
 
             if (pid == 0) {  // Processo figlio
                 close(segreteria_ascolto_socket);  // Il figlio non ha bisogno di questo socket
+                
+                printf("studente connesso");
 
                 if (read(segreteria_connessione_socket, &richiesta_ricevuta, sizeof(struct Richiesta)) != sizeof(struct Richiesta)) {
                     perror("read error");
@@ -83,7 +90,14 @@ int main() {
                 }
 
                 if (richiesta_ricevuta.TipoRichiesta == 1) {
+
                     esami_disponibili(richiesta_ricevuta.esame, segreteria_connessione_socket);
+                    
+                }
+                else if(richiesta_ricevuta.TipoRichiesta == 2)
+                {
+                    //prnotazione esame?
+
                 }
 
                 close(segreteria_connessione_socket);  // Chiude la connessione dopo aver gestito la richiesta
@@ -118,6 +132,8 @@ int ascolto_studenti(int segreteria_ascolto_socket, struct sockaddr_in *indirizz
     return segreteria_ascolto_socket;
 }
 
+
+
 void esami_disponibili(struct Esame esame, int segreteria_connessione_socket) {
 
     int socket_esami;
@@ -128,15 +144,6 @@ void esami_disponibili(struct Esame esame, int segreteria_connessione_socket) {
     ricezione_esami.esame = esame;
     socket_esami = connessione_universita(socket_esami, &indirizzo_universita);
     invio_esame_server(socket_esami, ricezione_esami);
-}
-
-void invio_esame_server(int socket_esami, struct Richiesta ricezione_esami) {
-
-    if(write(socket_esami, &ricezione_esami, sizeof(ricezione_esami)) != sizeof(ricezione_esami)) {
-        perror("Errore invio esame");
-        exit(1);
-    }
-
 }
 
 int connessione_universita(int socket_esami, struct sockaddr_in *indirizzo_universita) {
@@ -155,17 +162,15 @@ int connessione_universita(int socket_esami, struct sockaddr_in *indirizzo_unive
 
     return socket_esami;
 }
-void salva_esame_su_file(struct Esame esame) {
-    FILE *file = fopen("esami.txt", "a");  // Apertura del file in modalità append
+void invio_esame_server(int socket_esami, struct Richiesta ricezione_esami) {
 
-    if (file == NULL) {
-        perror("Errore apertura file esami.txt");
+    if(write(socket_esami, &ricezione_esami, sizeof(ricezione_esami)) != sizeof(ricezione_esami)) {
+        perror("Errore invio esame");
         exit(1);
     }
 
-    fprintf(file, "%s %s\n", esame.nome, esame.data);  // Scrittura dell'esame nel file
-    fclose(file);  // Chiusura del file
 }
+
 
 void inserisci_nuovo_esame() {
     struct Esame nuovo_esame;
@@ -178,6 +183,27 @@ void inserisci_nuovo_esame() {
     fgets(nuovo_esame.data, sizeof(nuovo_esame.data), stdin);
     nuovo_esame.data[strcspn(nuovo_esame.data, "\n")] = '\0';  // Rimuovi newline
 
-    salva_esame_su_file(nuovo_esame);
+    mandaEsameNuovoServer(nuovo_esame);
+    
+}
+
+void mandaEsameNuovoServer(struct Esame esame) {
+    int socket_segreteria;
+    struct sockaddr_in indirizzo_universita;
+    struct Richiesta aggiuntaEsame;
+
+    aggiuntaEsame.TipoRichiesta = 1;
+    aggiuntaEsame.esame = esame;
+
+    socket_segreteria = connessione_universita(socket_segreteria, &indirizzo_universita);
+
+    if(write(socket_segreteria, &aggiuntaEsame, sizeof(aggiuntaEsame)) != sizeof(aggiuntaEsame))
+    {
+        perror("Errore manda esame server");
+        exit(1);
+    }
+
     printf("Esame aggiunto con successo!\n");
+
+    close(socket_segreteria);
 }

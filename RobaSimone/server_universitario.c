@@ -28,6 +28,7 @@ struct Richiesta {
 void aggiungi_esame_file(struct Esame); 
 
 int main() {
+
     int universita_connessione_socket;
     int universita_ascolto_socket;
     struct sockaddr_in indirizzo_universita;
@@ -50,7 +51,7 @@ int main() {
 
         pid_t pid = fork();  // Creazione del processo figlio
 
-         if (pid < 0) {
+        if (pid < 0) {
             perror("Errore nella fork controlla bene");
             exit(EXIT_FAILURE);
         }
@@ -69,6 +70,10 @@ int main() {
             if(richiesta_ricevuta.TipoRichiesta == 1)
             {
                 aggiungi_esame_file(richiesta_ricevuta.esame);
+
+            } else if (richiesta_ricevuta.TipoRichiesta == 2) {
+
+                //qualcosa sulla ricezione esami
             }
             
         }
