@@ -18,7 +18,10 @@ struct Richiesta {
     struct Esame esame;
 };
 
+// Server universitario:
 
+//Riceve l'aggiunta di nuovi esami
+//Riceve la prenotazione di un esame
 
 //Quello meno sviluppato, dovrebbe solo poter ricevere la richiesta di aggiunta per ora
 
@@ -75,8 +78,10 @@ int main() {
 
             } else if (richiesta_ricevuta.TipoRichiesta == 2) {
 
-                //qualcosa sulla ricezione esami
+                gestisci_prenotazione(universita_connessione_socket, richiesta_ricevuta);
+                
             }
+
             
         }
 
@@ -99,4 +104,28 @@ void aggiungi_esame_file(struct Esame esame)
     fwrite(&esame, sizeof(struct Esame), 1, Lista_esami);
     fclose(Lista_esami);
     printf("Esame aggiunto fratm");
+}
+
+
+void gestisci_prenotazione(int universita_connessione_socket, struct Richiesta richiesta_ricevuta) {
+    char matricola[20];
+    int esito_prenotazione = 1; // 1 indica successo, 0 fallimento
+    
+    // Riceve la matricola
+    if (read(universita_connessione_socket, matricola, sizeof(matricola)) <= 0) {
+        perror("Errore ricezione matricola");
+        exit(-1);
+    }
+
+    printf("Prenotazione ricevuta per esame: %s, matricola: %s\n", richiesta_ricevuta.esame.nome, matricola);
+
+    // Logica di prenotazione esame:
+    // Qui si può inserire il codice per controllare se lo studente è idoneo alla prenotazione, se l'esame è disponibile, ecc.
+    // In questo esempio, si assume che la prenotazione vada sempre a buon fine.
+
+    // Invia l'esito della prenotazione
+    if (write(universita_connessione_socket, &esito_prenotazione, sizeof(esito_prenotazione)) != sizeof(esito_prenotazione)) {
+        perror("Errore invio esito prenotazione");
+        exit(-1);
+    }
 }

@@ -5,6 +5,13 @@
 #include <arpa/inet.h>
 #include "wrapper.h"
 
+//  Segreteria:
+
+//Inserisce gli esami sul server dell'università (salvare in un file o conservare in memoria il dato)
+//Inoltra la richiesta di prenotazione degli studenti al server universitario
+//Fornisce allo studente le date degli esami disponibili per l'esame scelto dallo studente
+
+
 struct Esame {
     char nome[100];
     char data[100];
@@ -96,7 +103,16 @@ int main() {
                 }
                 else if(richiesta_ricevuta.TipoRichiesta == 2)
                 {
-                    //prnotazione esame?
+                    int socket_prenotazione_esame;
+                    struct sockaddr_in indirizzo_universita;
+                    socket_prenotazione_esame = connessione_universita(socket_prenotazione_esame, &indirizzo_universita);
+
+                    // Prenotazione esame
+                    MandaPrenotazioneEsame(segreteria_connessione_socket, socket_prenotazione_esame, &richiesta_ricevuta.esame);
+
+                    RiceviMatricola(segreteria_connessione_socket, socket_prenotazione_esame);
+
+                    EsitoPrenotazione(segreteria_connessione_socket, socket_prenotazione_esame);
 
                 }
 
@@ -113,6 +129,47 @@ int main() {
     close(segreteria_ascolto_socket);
 
     return 0;
+}
+
+
+void MandaPrenotazioneEsame(int segreteria_connessione_socket, int socket_prenotazione_esame, struct Esame *esame) {
+    // Invia il nome dell'esame al server universitario
+    if (write(socket_prenotazione_esame, esame, sizeof(struct Esame)) != sizeof(struct Esame)) {
+        perror("Errore invio esame al server universitario");
+        exit(1);
+    }
+}
+
+void RiceviMatricola(int segreteria_connessione_socket, int socket_prenotazione_esame) {
+    char matricola[11]= "0124002485";
+    
+    // Riceve la matricola dallo studente
+    if (read(segreteria_connessione_socket, matricola, sizeof(matricola)) <= 0) {
+        perror("Errore ricezione matricola dallo studente");
+        exit(1);
+    }
+    
+    // Invia la matricola al server universitario
+    if (write(socket_prenotazione_esame, matricola, sizeof(matricola)) != sizeof(matricola)) {
+        perror("Errore invio matricola al server universitario");
+        exit(1);
+    }
+}
+
+void EsitoPrenotazione(int segreteria_connessione_socket, int socket_prenotazione_esame) {
+    int esito_prenotazione;
+    
+    // Riceve l'esito della prenotazione dal server universitario
+    if (read(socket_prenotazione_esame, &esito_prenotazione, sizeof(esito_prenotazione)) <= 0) {
+        perror("Errore ricezione esito prenotazione dal server universitario");
+        exit(1);
+    }
+    
+    // Invia l'esito della prenotazione allo studente
+    if (write(segreteria_connessione_socket, &esito_prenotazione, sizeof(esito_prenotazione)) != sizeof(esito_prenotazione)) {
+        perror("Errore invio esito prenotazione allo studente");
+        exit(1);
+    }
 }
 
 
