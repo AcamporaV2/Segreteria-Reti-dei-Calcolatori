@@ -208,7 +208,7 @@ int connessione_universita(int socket_esami, struct sockaddr_in *indirizzo_unive
     socket_esami = Socket(AF_INET, SOCK_STREAM, 0);
 
     (*indirizzo_universita).sin_family = AF_INET;
-    (*indirizzo_universita).sin_port = htons(3000);
+    (*indirizzo_universita).sin_port = htons(6940);
 
     if(inet_pton(AF_INET, "127.0.0.1", &(*indirizzo_universita).sin_addr) <= 0) {
         fprintf(stderr, "Errore inet 127.0.0.1");

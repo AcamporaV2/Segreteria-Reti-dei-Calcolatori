@@ -184,7 +184,7 @@ int ConnessioneSegreteria(int socket_studente, struct sockaddr_in *indirizzo_ser
     socket_studente = Socket(AF_INET, SOCK_STREAM, 0);
 
     (*indirizzo_server_segreteria).sin_family = AF_INET;
-    (*indirizzo_server_segreteria).sin_port = htons(5000);
+    (*indirizzo_server_segreteria).sin_port = htons(2000);
 
     if(inet_pton(AF_INET, "127.0.0.1", &(*indirizzo_server_segreteria).sin_addr) <= 0)
     {
