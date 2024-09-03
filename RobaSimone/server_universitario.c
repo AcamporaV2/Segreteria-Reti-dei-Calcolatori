@@ -5,7 +5,13 @@
 #include <arpa/inet.h>
 #include "wrapper.h"
 
-// Definizione delle strutture
+// Server universitario:
+
+//Riceve l'aggiunta di nuovi esami
+//Riceve la prenotazione di un esame
+
+
+// Definizione delle struct
 struct Esame {
     char nome[100];
     char data[100];
@@ -14,6 +20,12 @@ struct Esame {
 struct Richiesta {
     int TipoRichiesta;
     struct Esame esame;
+};
+
+struct Prenotazione {
+    struct Esame esame;
+    int NumPrenotazione;
+    char Matricola[11];
 };
 
 // Funzioni dichiarate
@@ -47,9 +59,8 @@ int main() {
         // Creazione di un processo figlio per gestire la richiesta
         pid_t pid = fork();
         if (pid < 0) {
-            perror("Errore nella fork");
-            close(universita_connessione_socket);
-            continue; // Prosegue con il prossimo ciclo
+            perror("Errore nella fork controlla bene");
+            exit(EXIT_FAILURE);
         }
 
         if (pid == 0) { // Processo figlio
@@ -65,9 +76,13 @@ int main() {
 
             // Gestione della richiesta in base al tipo
             if (richiesta_ricevuta.TipoRichiesta == 1) {
+
                 aggiungi_esame_file(richiesta_ricevuta.esame);
+
             } else if (richiesta_ricevuta.TipoRichiesta == 2) {
+
                 gestisci_prenotazione(universita_connessione_socket, richiesta_ricevuta);
+
             } else {
                 fprintf(stderr, "Tipo di richiesta non valido\n");
             }
@@ -75,6 +90,7 @@ int main() {
             // Chiusura del socket di connessione
             close(universita_connessione_socket);
             exit(EXIT_SUCCESS);
+
         } else { // Processo padre
             close(universita_connessione_socket);
         }
@@ -93,8 +109,8 @@ void aggiungi_esame_file(struct Esame esame) {
         exit(EXIT_FAILURE);
     }
 
-    // Scrittura dell'esame nel file
-    if (fwrite(&esame, sizeof(struct Esame), 1, Lista_esami) != 1) {
+    // Scrittura dell'esame nel file usando fprintf
+    if (fprintf(Lista_esami, "%s,%s\n", esame.nome, esame.data) < 0) {
         perror("Errore scrittura file esami.txt");
         fclose(Lista_esami);
         exit(EXIT_FAILURE);
@@ -105,19 +121,41 @@ void aggiungi_esame_file(struct Esame esame) {
 }
 
 // Funzione per gestire la prenotazione di un esame
+// Funzione per gestire la prenotazione di un esame
 int gestisci_prenotazione(int universita_connessione_socket, struct Richiesta richiesta_ricevuta) {
-    char matricola[20];
+    struct Prenotazione prenotazione;
+    static int numPrenotazioneCounter = 1; // Contatore per assegnare un numero univoco alla prenotazione
     int esito_prenotazione = 1; // 1 indica successo, 0 indica fallimento
 
     // Ricezione della matricola dallo studente
-    ssize_t bytes_read = read(universita_connessione_socket, matricola, sizeof(matricola));
+    ssize_t bytes_read = read(universita_connessione_socket, prenotazione.Matricola, sizeof(prenotazione.Matricola) - 1);
     if (bytes_read <= 0) {
         perror("Errore ricezione matricola");
         return -1;
     }
 
-    matricola[bytes_read] = '\0'; // Assicurati che la stringa sia terminata correttamente
-    printf("Prenotazione ricevuta per esame: %s, matricola: %s\n", richiesta_ricevuta.esame.nome, matricola);
+    prenotazione.Matricola[bytes_read] = '\0'; // Assicurati che la stringa sia terminata correttamente
+
+    // Popolazione della struct Prenotazione
+    prenotazione.esame = richiesta_ricevuta.esame;
+    prenotazione.NumPrenotazione = numPrenotazioneCounter++;
+    
+    printf("Prenotazione ricevuta per esame: %s, matricola: %s\n", prenotazione.esame.nome, prenotazione.Matricola);
+
+    // Scrittura della prenotazione nel file "prenotazioni.txt"
+    FILE *file_prenotazioni = fopen("prenotazioni.txt", "a");
+    if (file_prenotazioni == NULL) {
+        perror("Errore apertura file prenotazioni.txt");
+        esito_prenotazione = 0; // Imposta esito a 0 in caso di errore
+    } else {
+        // Scrivi la prenotazione nel file usando il formato "NumPrenotazione,EsameNome,EsameData,Matricola\n"
+        fprintf(file_prenotazioni, "%d,%s,%s,%s\n", 
+                prenotazione.NumPrenotazione, 
+                prenotazione.esame.nome, 
+                prenotazione.esame.data, 
+                prenotazione.Matricola);
+        fclose(file_prenotazioni);
+    }
 
     // Invia l'esito della prenotazione
     ssize_t bytes_written = write(universita_connessione_socket, &esito_prenotazione, sizeof(esito_prenotazione));
@@ -128,3 +166,5 @@ int gestisci_prenotazione(int universita_connessione_socket, struct Richiesta ri
 
     return 0;
 }
+
+

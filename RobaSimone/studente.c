@@ -5,7 +5,12 @@
 #include <arpa/inet.h>
 #include "wrapper.h"
 
-// Definizione della struttura per gli esami
+// Studente:
+
+// Chiede alla segreteria se ci siano esami disponibili per un corso
+// Invia una richiesta di prenotazione di un esame alla segreteria
+
+// Definizione della struct 
 struct Esame {
     char nome[100];
     char data[100];
@@ -38,6 +43,7 @@ int main() {
     getchar(); // Pulisce il buffer di input
 
     if (richiesta_studente.TipoRichiesta == 1) {
+
         printf("Nome esame che vuoi cercare: ");
         fgets(richiesta_studente.esame.nome, sizeof(richiesta_studente.esame.nome), stdin);
         richiesta_studente.esame.nome[strcspn(richiesta_studente.esame.nome, "\n")] = '\0'; // Rimuove il newline
@@ -79,6 +85,7 @@ int main() {
         }
     } 
     else if (richiesta_studente.TipoRichiesta == 2) {
+
         socket_studente = ConnessioneSegreteria(&socket_studente, &indirizzo_server_segreteria);
 
         if (write(socket_studente, &richiesta_studente, sizeof(richiesta_studente)) != sizeof(richiesta_studente)) {
