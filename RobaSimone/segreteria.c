@@ -151,18 +151,30 @@ void MandaPrenotazioneEsame(int socket_prenotazione_esame, struct Esame *esame) 
 }
 
 void RiceviMatricola(int segreteria_connessione_socket, int socket_prenotazione_esame) {
-    char matricola[11]= "0124002485";
-    
-    if (read(segreteria_connessione_socket, matricola, sizeof(matricola)) <= 0) {
-        perror("Errore ricezione matricola dallo studente");
+    char matricola[11]; // Array per la matricola, massimo 10 caratteri + terminatore nullo
+
+    // Ricezione della matricola dallo studente
+    ssize_t MatricolaStudente = read(segreteria_connessione_socket, matricola, sizeof(matricola) - 1); // Leggi fino a 10 caratteri
+    if (MatricolaStudente <= 0) {
+        if (MatricolaStudente == 0) {
+            fprintf(stderr, "Connessione chiusa dallo studente durante la ricezione della matricola.\n");
+        } else {
+            perror("Errore ricezione matricola dallo studente");
+        }
         exit(EXIT_FAILURE);
     }
-    
+
+    // Assicurati che la stringa sia terminata correttamente
+    matricola[MatricolaStudente] = '\0'; // Aggiungi il terminatore nullo alla fine
+
+    // Invia la matricola al server universitario
     if (write(socket_prenotazione_esame, matricola, sizeof(matricola)) != sizeof(matricola)) {
         perror("Errore invio matricola al server universitario");
         exit(EXIT_FAILURE);
     }
 }
+
+
 
 void EsitoPrenotazione(int segreteria_connessione_socket, int socket_prenotazione_esame) {
     int esito_prenotazione;
@@ -195,12 +207,45 @@ void esami_disponibili(struct Esame esame, int segreteria_connessione_socket) {
     int socket_esami;
     struct sockaddr_in indirizzo_universita;
     struct Richiesta ricezione_esami;
+    struct Esame esami_disponibili[100]; // Assumiamo che ci siano al massimo 100 esami
+    int numero_esami = 0;
 
-    ricezione_esami.TipoRichiesta = 2;
+    ricezione_esami.TipoRichiesta = 1; // TipoRichiesta 1 per ottenere gli esami disponibili
     ricezione_esami.esame = esame;
+
     socket_esami = connessione_universita(&indirizzo_universita);
     invio_esame_server(socket_esami, ricezione_esami);
+
+    // Riceviamo il numero di esami dal server universitario
+    if (read(socket_esami, &numero_esami, sizeof(numero_esami)) != sizeof(numero_esami)) {
+        perror("Errore ricezione numero esami dal server universitario");
+        close(socket_esami);
+        exit(EXIT_FAILURE);
+    }
+
+    // Inviamo il numero di esami allo studente
+    if (write(segreteria_connessione_socket, &numero_esami, sizeof(numero_esami)) != sizeof(numero_esami)) {
+        perror("Errore invio numero esami allo studente");
+        close(socket_esami);
+        exit(EXIT_FAILURE);
+    }
+
+    // Riceviamo gli esami disponibili dal server universitario
+    if (read(socket_esami, esami_disponibili, sizeof(struct Esame) * numero_esami) != sizeof(struct Esame) * numero_esami) {
+        perror("Errore ricezione lista esami dal server universitario");
+        close(socket_esami);
+        exit(EXIT_FAILURE);
+    }
+
+    // Inviamo la lista di esami disponibili allo studente
+    if (write(segreteria_connessione_socket, esami_disponibili, sizeof(struct Esame) * numero_esami) != sizeof(struct Esame) * numero_esami) {
+        perror("Errore invio lista esami allo studente");
+        close(socket_esami);
+        exit(EXIT_FAILURE);
+    }
+
 }
+
 
 int connessione_universita(struct sockaddr_in *indirizzo_universita) {
     int socket_esami = Socket(AF_INET, SOCK_STREAM, 0);

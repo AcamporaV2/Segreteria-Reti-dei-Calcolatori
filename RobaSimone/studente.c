@@ -155,11 +155,12 @@ int numeroPrenotazione(int socket_studente, int *numero_prenotazione) {
 }
 
 void mandaMatricola(int socket_studente, char *matricola) {
-    if (write(socket_studente, matricola, strlen(matricola) + 1) != strlen(matricola) + 1) {
+    if (write(socket_studente, matricola, sizeof(matricola)) != sizeof(matricola)) {
         perror("Errore invio matricola");
         exit(1);
     }
 }
+
 
 void mandaEsamePrenotazione(int socket_studente, struct Esame *esameDaPrenotare) {
     if (write(socket_studente, esameDaPrenotare, sizeof(struct Esame)) != sizeof(struct Esame)) {
