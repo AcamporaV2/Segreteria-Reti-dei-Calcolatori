@@ -1,0 +1,19 @@
+Segreteria:
+v) Inserisce gli esami sul server dell'università (salvare in un file o conservare in memoria il dato)
+    P.S.: cercare di pulire il buffer, in modo tale da non avere problemi di aggiunta/rimozione esami e aggiungere criteri di inserimento
+-) Inoltra la richiesta di prenotazione degli studenti al server universitario
+-) Fornisce allo studente le date degli esami disponibili per l'esame scelto dallo studente
+
+Studenti:
+-) Chiede alla segreteria se ci siano esami disponibili per un corso
+-) Invia una richiesta di prenotazione di un esame alla segreteria
+
+Server Universitario:
+-) Riceve l'aggiunta di nuovi esami
+-) Riceve la prenotazione di un esame
+
+-) Il server universitario ad ogni richiesta di prenotazione invia alla segreteria il numero di prenotazione progressivo assegnato allo studente e 
+    la segreteria a sua volta lo inoltra allo studente 
+
+-) Se la segreteria non risponde alla richiesta dello studente questo deve ritentare la connessione per 3 volte. Se le richieste continuano a
+    fallire allora aspetta un tempo random e ritenta.  Simulare un timeout della segreteria in modo da arrivare a testare l'attesa random
