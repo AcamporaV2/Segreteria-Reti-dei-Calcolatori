@@ -34,6 +34,7 @@ void inserisci_nuovo_esame(void);
 void MandaPrenotazioneEsame(int socket_prenotazione_esame, struct Esame *esame);
 void RiceviMatricola(int segreteria_connessione_socket, int socket_prenotazione_esame);
 void EsitoPrenotazione(int segreteria_connessione_socket, int socket_prenotazione_esame);
+void MandaNumeroPrenotazione(int segreteria_connessione_socket, int socket_prenotazione_esame);
 
 int main() {
     int segreteria_connessione_socket;
@@ -58,6 +59,9 @@ int main() {
         } 
 
         if (scelta == 2) {
+
+             printf("Ascolto studenti sulla porta 2000...\n");
+
             //Gestione richieste studenti
             segreteria_connessione_socket = Accetta(segreteria_ascolto_socket, (struct sockaddr *)NULL, NULL);
 
