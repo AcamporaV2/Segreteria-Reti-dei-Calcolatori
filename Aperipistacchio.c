@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include "wrapper.h"
 
 // Definizione delle struct
@@ -60,8 +62,6 @@ int main() {
             }
 
             if (pid == 0) { // Processo figlio
-                close(STDIN_FILENO); // Optional: close standard input in child to prevent input issues
-
                 while (1) {
                     int segreteria_connessione_socket;
                     struct Richiesta richiesta_ricevuta;
@@ -102,10 +102,13 @@ int main() {
                 close(segreteria_ascolto_socket);
                 exit(EXIT_SUCCESS);
 
-            } else {
-                // Processo padre continua a funzionare
-                close(segreteria_ascolto_socket); // Chiudi il socket di ascolto nel processo padre
-                break; // Esci dal ciclo del processo padre per prevenire la duplicazione del listener
+            } else { // Processo padre
+                // Mantieni il processo padre in attesa per prevenire il ritorno al terminale
+                // Puoi usare sleep in un ciclo o semplicemente usare wait per gestire i processi figli
+                while (1) {
+                    wait(NULL);  // Attende la terminazione di qualsiasi processo figlio
+                    // Alternativamente, puoi usare sleep(1); per far dormire il processo padre indefinitamente
+                }
             }
 
         } else {
