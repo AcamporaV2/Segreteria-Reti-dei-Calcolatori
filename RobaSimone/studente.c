@@ -85,8 +85,7 @@ int main() {
 
                 close(socket_studente);
             }
-        } 
-        else if (richiesta_studente.TipoRichiesta == 2) {
+        } else if (richiesta_studente.TipoRichiesta == 2) {
 
             socket_studente = ConnessioneSegreteria(&socket_studente, &indirizzo_server_segreteria);
 
