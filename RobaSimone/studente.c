@@ -5,6 +5,9 @@
 #include <arpa/inet.h>
 #include "wrapper.h"
 
+#define MAX_RETRY 3
+#define MAX_WAIT_TIME 5  // in secondi
+#define SIMULA_TIMEOUT 1 // Imposta a 1 per simulare timeout, 0 per disabilitare
 // Studente:
 
 // Chiede alla segreteria se ci siano esami disponibili per un corso
@@ -26,7 +29,7 @@ struct Richiesta
 // Dichiarazioni delle funzioni
 int numeroPrenotazione(int socket_studente, int *numero_prenotazione);
 void mandaMatricola(int socket_studente, char *matricola);
-void mandaEsamePrenotazione(int socket_studente, struct Esame esameDaPrenotare);
+void mandaEsamePrenotazione(int socket_studente, struct Esame *esameDaPrenotare);
 int ConnessioneSegreteria(int *socket_studente, struct sockaddr_in *indirizzo_server_segreteria);
 void riceviListaEsami(int socket_studente, int numero_esami, struct Esame *esameCercato);
 int conto_esami(int socket_studente, int *numero_esami);
@@ -154,14 +157,16 @@ int main()
 
                     struct Esame esameDaPrenotare = esameCercato[scelta_esame - 1];
 
-                    printf("Data esame %s\n", esameDaPrenotare.data);
+                    // Assicurati di inviare prima la struttura Esame
+                    mandaEsamePrenotazione(socket_studente, &esameDaPrenotare);
+
+                    // Poi invia la matricola
                     mandaMatricola(socket_studente, matricola);
-                    mandaEsamePrenotazione(socket_studente, esameDaPrenotare);
 
-                    int numero_prenotazione;
-                    numeroPrenotazione(socket_studente, &numero_prenotazione);
+                    int prenotazione;
+                    numeroPrenotazione(socket_studente, &prenotazione);
 
-                    printf("Prenotazione completata con successo. Il tuo numero di prenotazione è: %d\n", numero_prenotazione);
+                    printf("Prenotazione completata con successo. Il tuo numero di prenotazione è: %d\n", prenotazione);
                 }
                 else
                 {
@@ -188,27 +193,34 @@ int numeroPrenotazione(int socket_studente, int *numero_prenotazione)
     return *numero_prenotazione;
 }
 
-void mandaMatricola(int socket_studente, char *matricola) {
+void mandaMatricola(int socket_studente, char *matricola)
+{
     // Usa strlen(matricola) + 1 per includere il terminatore nullo
     size_t length = strlen(matricola); // +1 per includere il terminatore nullo
-    if (write(socket_studente, matricola, length) != length) {
+    if (write(socket_studente, matricola, length) != length)
+    {
         perror("Errore invio matricola");
         exit(1);
     }
 }
 
-
-void mandaEsamePrenotazione(int socket_studente, struct Esame esameDaPrenotare)
+void mandaEsamePrenotazione(int socket_studente, struct Esame *esameDaPrenotare)
 {
-    if (write(socket_studente, &esameDaPrenotare, sizeof(struct Esame)) != sizeof(struct Esame))
+    // Invia l'intera struttura Esame
+    if (write(socket_studente, esameDaPrenotare, sizeof(struct Esame)) != sizeof(struct Esame))
     {
         perror("Errore invio esame prenotazione");
         exit(1);
     }
+    printf("Debug: Esame inviato dallo studente: Nome = %s, Data = %s\n", esameDaPrenotare->nome, esameDaPrenotare->data);
 }
 
 int ConnessioneSegreteria(int *socket_studente, struct sockaddr_in *indirizzo_server_segreteria)
 {
+    int retry_count = 0;
+    int success = 0;
+
+    // Configurazione del socket
     *socket_studente = Socket(AF_INET, SOCK_STREAM, 0);
 
     indirizzo_server_segreteria->sin_family = AF_INET;
@@ -217,11 +229,58 @@ int ConnessioneSegreteria(int *socket_studente, struct sockaddr_in *indirizzo_se
     if (inet_pton(AF_INET, "127.0.0.1", &indirizzo_server_segreteria->sin_addr) <= 0)
     {
         perror("Errore inet_pton");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
-    Connetti(*socket_studente, (struct sockaddr *)indirizzo_server_segreteria, sizeof(*indirizzo_server_segreteria));
-    return *socket_studente;
+    while (retry_count < MAX_RETRY && !success)
+    {
+        // Tentativo di connessione
+        Connetti(*socket_studente, (struct sockaddr *)indirizzo_server_segreteria, sizeof(*indirizzo_server_segreteria));
+        
+        // Verifica se la connessione è riuscita
+        if (errno == 0)
+        {
+            success = 1; // Connessione riuscita
+        }
+        else
+        {
+            perror("Errore di connessione");
+            retry_count++;
+
+            if (retry_count < MAX_RETRY)
+            {
+                printf("Tentativo di riconnessione in corso...\n");
+                sleep(2); // Pausa tra i tentativi
+            }
+            else
+            {
+                if (SIMULA_TIMEOUT)
+                {
+                    int aspetta_tempo = rand() % MAX_WAIT_TIME + 1;
+                    printf("Simulazione timeout: attesa di %d secondi\n", aspetta_tempo);
+                    sleep(aspetta_tempo);
+
+                    // Dopo la pausa, riprova a connetterti
+                    retry_count = 0; // Resetta il contatore dei tentativi
+                }
+                else
+                {
+                    fprintf(stderr, "Numero massimo di tentativi raggiunto. Uscita.\n");
+                    close(*socket_studente);
+                    exit(EXIT_FAILURE);
+                }
+            }
+        }
+    }
+
+    if (!success)
+    {
+        fprintf(stderr, "Impossibile connettersi alla segreteria dopo %d tentativi.\n", MAX_RETRY);
+        close(*socket_studente);
+        exit(EXIT_FAILURE);
+    }
+
+    return *socket_studente; // Restituisce il socket in caso di successo
 }
 
 void riceviListaEsami(int socket_studente, int numero_esami, struct Esame *esameCercato)

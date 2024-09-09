@@ -31,6 +31,7 @@ void MandaPrenotazioneEsame(int socket_prenotazione_esame, struct Esame esame);
 void RiceviMatricola(int segreteria_connessione_socket, int socket_prenotazione_esame);
 void EsitoPrenotazione(int segreteria_connessione_socket, int socket_prenotazione_esame);
 void MandaNumeroPrenotazione(int segreteria_connessione_socket, int socket_prenotazione_esame);
+void riceviEsame(int socket, struct Esame *esame);
 
 int main()
 {
@@ -103,12 +104,14 @@ int main()
                         printf("Connessione al server universitario riuscita\n");
 
                         esami_disponibili(richiesta_ricevuta.esame, segreteria_connessione_socket);
+                        riceviEsame(segreteria_connessione_socket, &richiesta_ricevuta.esame);
 
                         MandaPrenotazioneEsame(socket_prenotazione_esame, richiesta_ricevuta.esame);
                         RiceviMatricola(segreteria_connessione_socket, socket_prenotazione_esame);
-                        MandaNumeroPrenotazione(segreteria_connessione_socket, socket_prenotazione_esame);
-                        EsitoPrenotazione(segreteria_connessione_socket, socket_prenotazione_esame);
                         
+                        EsitoPrenotazione(segreteria_connessione_socket, socket_prenotazione_esame);
+                        MandaNumeroPrenotazione(segreteria_connessione_socket, socket_prenotazione_esame);
+
 
                         printf("Prenotazione esame completata\n");
 
@@ -149,17 +152,20 @@ int main()
 /////////////////////////////////////////////////
 
 // Verifica la ricezione del numero di prenotazione
-void MandaNumeroPrenotazione(int segreteria_connessione_socket, int socket_prenotazione_esame) {
+void MandaNumeroPrenotazione(int segreteria_connessione_socket, int socket_prenotazione_esame)
+{
     int numero_prenotazione;
 
     // Ricezione del numero di prenotazione dal server universitario
-    if (read(socket_prenotazione_esame, &numero_prenotazione, sizeof(numero_prenotazione)) != sizeof(numero_prenotazione)) {
+    if (read(socket_prenotazione_esame, &numero_prenotazione, sizeof(numero_prenotazione)) != sizeof(numero_prenotazione))
+    {
         perror("Errore ricezione numero prenotazione dal server universitario");
         exit(EXIT_FAILURE);
     }
 
     // Invio del numero di prenotazione al client studente tramite la segreteria
-    if (write(segreteria_connessione_socket, &numero_prenotazione, sizeof(numero_prenotazione)) != sizeof(numero_prenotazione)) {
+    if (write(segreteria_connessione_socket, &numero_prenotazione, sizeof(numero_prenotazione)) != sizeof(numero_prenotazione))
+    {
         perror("Errore invio numero prenotazione allo studente");
         exit(EXIT_FAILURE);
     }
@@ -167,25 +173,30 @@ void MandaNumeroPrenotazione(int segreteria_connessione_socket, int socket_preno
     printf("Numero prenotazione inviato allo studente: %d\n", numero_prenotazione);
 }
 
+// Funzione per ricevere la struttura Esame
+void riceviEsame(int socket, struct Esame *esame) {
+    if (read(socket, esame, sizeof(struct Esame)) != sizeof(struct Esame)) {
+        perror("Errore ricezione esame");
+        exit(1);
+    }
+    // Debug per verificare che i dati siano correttamente ricevuti
+    printf("Debug Segreteria: Ricevuto Esame: Nome = %s, Data = %s\n", esame->nome, esame->data);
+}
 
-void MandaPrenotazioneEsame(int socket_prenotazione_esame, struct Esame esame)
-{
+
+void MandaPrenotazioneEsame(int socket_prenotazione_esame, struct Esame esame) {
     struct Richiesta richiesta_prenotazione;
-
-    // Imposta il tipo di richiesta a 2 per indicare una prenotazione
     richiesta_prenotazione.TipoRichiesta = 2;
-    richiesta_prenotazione.esame = esame; // Copia l'esame nella struttura richiesta
+    richiesta_prenotazione.esame = esame;
 
-    printf("MUORI MUORI MUORI MUORI IL: %s\n", richiesta_prenotazione.esame.data);
+    // Debug per confermare l'invio con i dati corretti
+    printf("Debug Segreteria: Inviando richiesta con Esame: %s, Data: %s\n", richiesta_prenotazione.esame.nome, richiesta_prenotazione.esame.data);
 
-    // Invia la struttura Richiesta completa al server universitario
-    if (write(socket_prenotazione_esame, &richiesta_prenotazione, sizeof(richiesta_prenotazione)) != sizeof(richiesta_prenotazione))
-    {
+    if (write(socket_prenotazione_esame, &richiesta_prenotazione, sizeof(richiesta_prenotazione)) != sizeof(richiesta_prenotazione)) {
         perror("Errore invio richiesta prenotazione al server universitario");
         exit(EXIT_FAILURE);
     }
 }
-
 
 void RiceviMatricola(int segreteria_connessione_socket, int socket_prenotazione_esame)
 {

@@ -30,6 +30,8 @@ struct Prenotazione
     char Matricola[11];
 };
 
+static int numPrenotazioneCounter = 1; //variabile globale per il numero di prenotazioni
+
 // Funzioni dichiarate
 void aggiungi_esame_file(struct Esame esame);
 int gestisci_prenotazione(int universita_connessione_socket, struct Richiesta richiesta_ricevuta);
@@ -141,20 +143,25 @@ void aggiungi_esame_file(struct Esame esame)
 }
 
 /////////////////////////
-int gestisci_prenotazione(int universita_connessione_socket, struct Richiesta richiesta_ricevuta) {
+int gestisci_prenotazione(int universita_connessione_socket, struct Richiesta richiesta_ricevuta)
+{
     struct Prenotazione prenotazione;
-    static int numPrenotazioneCounter = 1;
     int esito_prenotazione = 1;
     prenotazione.esame = richiesta_ricevuta.esame;
     prenotazione.NumPrenotazione = numPrenotazioneCounter++;
 
+    printf("NUMERO PRENOTAZIONE DEBUG: %d\n", prenotazione.NumPrenotazione);
 
     // Ricezione della matricola dallo studente tramite la segreteria
     ssize_t MatricolaStudente = read(universita_connessione_socket, prenotazione.Matricola, sizeof(prenotazione.Matricola) - 1);
-    if (MatricolaStudente <= 0) { 
-        if (MatricolaStudente == 0) {
+    if (MatricolaStudente <= 0)
+    {
+        if (MatricolaStudente == 0)
+        {
             fprintf(stderr, "Connessione chiusa dalla segreteria durante la ricezione della matricola.\n");
-        } else {
+        }
+        else
+        {
             perror("Errore ricezione matricola");
         }
         return -1;
@@ -167,19 +174,23 @@ int gestisci_prenotazione(int universita_connessione_socket, struct Richiesta ri
     // prenotazione.NumPrenotazione = numPrenotazioneCounter++;
 
     ssize_t numero_prenotazione = write(universita_connessione_socket, &prenotazione.NumPrenotazione, sizeof(prenotazione.NumPrenotazione));
-    if (numero_prenotazione != sizeof(prenotazione.NumPrenotazione)) {
+    if (numero_prenotazione != sizeof(prenotazione.NumPrenotazione))
+    {
         perror("Errore invio numero prenotazione");
         return -1;
     }
 
-    printf("Prenotazione ricevuta per esame: %s, data: %s, matricola: %s\n", prenotazione.esame.nome, prenotazione.esame.data, prenotazione.Matricola);
+    printf("Prenotazione ricevuta per esame: %s, data: %s, matricola: %s, numero:%d\n", prenotazione.esame.nome, prenotazione.esame.data, prenotazione.Matricola, prenotazione.NumPrenotazione);
 
     // Scrivi la prenotazione nel file "prenotazioni.txt"
     FILE *file_prenotazioni = fopen("prenotazioni.txt", "a");
-    if (file_prenotazioni == NULL) {
+    if (file_prenotazioni == NULL)
+    {
         perror("Errore apertura file prenotazioni.txt");
         esito_prenotazione = 0;
-    } else {
+    }
+    else
+    {
         // Assicurati che i dati siano scritti correttamente
         fprintf(file_prenotazioni, "%d,%s,%s,%s\n",
                 prenotazione.NumPrenotazione,
@@ -191,14 +202,14 @@ int gestisci_prenotazione(int universita_connessione_socket, struct Richiesta ri
 
     // Invia l'esito della prenotazione
     ssize_t bytes_written = write(universita_connessione_socket, &esito_prenotazione, sizeof(esito_prenotazione));
-    if (bytes_written != sizeof(esito_prenotazione)) {
+    if (bytes_written != sizeof(esito_prenotazione))
+    {
         perror("Errore invio esito prenotazione");
         return -1;
     }
 
     return 0;
 }
-
 
 void gestisci_esami_disponibili(int socket, struct Richiesta richiesta_ricevuta)
 {
