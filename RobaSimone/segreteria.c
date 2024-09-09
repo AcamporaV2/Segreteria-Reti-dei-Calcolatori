@@ -8,12 +8,14 @@
 #include "wrapper.h"
 
 // Definizione delle struct
-struct Esame {
+struct Esame
+{
     char nome[100];
     char data[100];
 };
 
-struct Richiesta {
+struct Richiesta
+{
     int TipoRichiesta;
     struct Esame esame;
 };
@@ -25,73 +27,95 @@ void invio_esame_server(int socket_esami, struct Richiesta ricezione_esami);
 int connessione_universita(struct sockaddr_in *indirizzo_universita);
 void mandaEsameNuovoServer(struct Esame esame);
 void inserisci_nuovo_esame(void);
-void MandaPrenotazioneEsame(int socket_prenotazione_esame, struct Esame *esame);
+void MandaPrenotazioneEsame(int socket_prenotazione_esame, struct Esame esame);
 void RiceviMatricola(int segreteria_connessione_socket, int socket_prenotazione_esame);
 void EsitoPrenotazione(int segreteria_connessione_socket, int socket_prenotazione_esame);
 void MandaNumeroPrenotazione(int segreteria_connessione_socket, int socket_prenotazione_esame);
 
-int main() {
+int main()
+{
     int segreteria_ascolto_socket;
     struct sockaddr_in indirizzo_segreteria;
     int scelta;
 
     segreteria_ascolto_socket = ascolto_studenti(&indirizzo_segreteria);
 
-    while (1) {
+    while (1)
+    {
         printf("\nScegli un'azione:\n");
         printf("1. Aggiungi un nuovo esame\n");
         printf("2. Ascolta le richieste degli studenti\n");
         printf("Inserisci la tua scelta: ");
         scanf("%d", &scelta);
-        getchar();  // Consuma il newline lasciato da scanf
+        getchar(); // Consuma il newline lasciato da scanf
 
-        if (scelta == 1) {
+        if (scelta == 1)
+        {
             inserisci_nuovo_esame();
             continue;
-        } 
+        }
 
-        if (scelta == 2) {
+        if (scelta == 2)
+        {
             printf("Ascolto studenti sulla porta 2000...\n");
 
             // Processo figlio per gestire le richieste in modo continuo
             pid_t pid = fork();
 
-            if (pid < 0) {
+            if (pid < 0)
+            {
                 perror("Errore nella fork");
                 exit(EXIT_FAILURE);
             }
 
-            if (pid == 0) { // Processo figlio
-                while (1) {
+            if (pid == 0)
+            { // Processo figlio
+                while (1)
+                {
                     int segreteria_connessione_socket;
                     struct Richiesta richiesta_ricevuta;
 
                     // Gestione continua delle richieste degli studenti
                     segreteria_connessione_socket = Accetta(segreteria_ascolto_socket, (struct sockaddr *)NULL, NULL);
 
-                    if (read(segreteria_connessione_socket, &richiesta_ricevuta, sizeof(struct Richiesta)) != sizeof(struct Richiesta)) {
+                    if (read(segreteria_connessione_socket, &richiesta_ricevuta, sizeof(struct Richiesta)) != sizeof(struct Richiesta))
+                    {
                         perror("Errore nella lettura della richiesta");
                         close(segreteria_connessione_socket);
                         continue; // Continua a gestire altre richieste
                     }
 
-                    if (richiesta_ricevuta.TipoRichiesta == 1) {
+                    if (richiesta_ricevuta.TipoRichiesta == 1)
+                    {
                         // Richiesta di visualizzare esami disponibili
                         esami_disponibili(richiesta_ricevuta.esame, segreteria_connessione_socket);
-
-                    } else if (richiesta_ricevuta.TipoRichiesta == 2) {
+                    }
+                    else if (richiesta_ricevuta.TipoRichiesta == 2)
+                    {
                         // Gestione della prenotazione esame
                         int socket_prenotazione_esame;
                         struct sockaddr_in indirizzo_universita;
+                        struct Richiesta prenotazione_esame;
+                        prenotazione_esame.TipoRichiesta = 2; // TipoRichiesta 2 per prenotare un esame
+
                         socket_prenotazione_esame = connessione_universita(&indirizzo_universita);
 
-                        MandaPrenotazioneEsame(socket_prenotazione_esame, &richiesta_ricevuta.esame);
+                        printf("Connessione al server universitario riuscita\n");
+
+                        esami_disponibili(richiesta_ricevuta.esame, segreteria_connessione_socket);
+
+                        MandaPrenotazioneEsame(socket_prenotazione_esame, richiesta_ricevuta.esame);
                         RiceviMatricola(segreteria_connessione_socket, socket_prenotazione_esame);
-                        EsitoPrenotazione(segreteria_connessione_socket, socket_prenotazione_esame);
                         MandaNumeroPrenotazione(segreteria_connessione_socket, socket_prenotazione_esame);
+                        EsitoPrenotazione(segreteria_connessione_socket, socket_prenotazione_esame);
+                        
+
+                        printf("Prenotazione esame completata\n");
 
                         close(socket_prenotazione_esame);
-                    } else {
+                    }
+                    else
+                    {
                         fprintf(stderr, "Tipo di richiesta non valido\n");
                     }
 
@@ -101,17 +125,19 @@ int main() {
                 // Uscita dal processo figlio in caso di errore critico (opzionale)
                 close(segreteria_ascolto_socket);
                 exit(EXIT_SUCCESS);
-
-            } else { // Processo padre
+            }
+            else
+            { // Processo padre
                 // Mantieni il processo padre in attesa per prevenire il ritorno al terminale
                 // Puoi usare sleep in un ciclo o semplicemente usare wait per gestire i processi figli
-                while (1) {
-                    wait(NULL);  // Attende la terminazione di qualsiasi processo figlio
-                    // Alternativamente, puoi usare sleep(1); per far dormire il processo padre indefinitamente
+                while (1)
+                {
+                    wait(NULL); // Attende la terminazione di qualsiasi processo figlio
                 }
             }
-
-        } else {
+        }
+        else
+        {
             printf("Scelta non valida. Riprova.\n");
         }
     }
@@ -120,6 +146,9 @@ int main() {
     return 0;
 }
 
+/////////////////////////////////////////////////
+
+// Verifica la ricezione del numero di prenotazione
 void MandaNumeroPrenotazione(int segreteria_connessione_socket, int socket_prenotazione_esame) {
     int numero_prenotazione;
 
@@ -138,22 +167,40 @@ void MandaNumeroPrenotazione(int segreteria_connessione_socket, int socket_preno
     printf("Numero prenotazione inviato allo studente: %d\n", numero_prenotazione);
 }
 
-void MandaPrenotazioneEsame(int socket_prenotazione_esame, struct Esame *esame) {
-    if (write(socket_prenotazione_esame, esame, sizeof(struct Esame)) != sizeof(struct Esame)) {
-        perror("Errore invio esame al server universitario");
+
+void MandaPrenotazioneEsame(int socket_prenotazione_esame, struct Esame esame)
+{
+    struct Richiesta richiesta_prenotazione;
+
+    // Imposta il tipo di richiesta a 2 per indicare una prenotazione
+    richiesta_prenotazione.TipoRichiesta = 2;
+    richiesta_prenotazione.esame = esame; // Copia l'esame nella struttura richiesta
+
+    printf("MUORI MUORI MUORI MUORI IL: %s\n", richiesta_prenotazione.esame.data);
+
+    // Invia la struttura Richiesta completa al server universitario
+    if (write(socket_prenotazione_esame, &richiesta_prenotazione, sizeof(richiesta_prenotazione)) != sizeof(richiesta_prenotazione))
+    {
+        perror("Errore invio richiesta prenotazione al server universitario");
         exit(EXIT_FAILURE);
     }
 }
 
-void RiceviMatricola(int segreteria_connessione_socket, int socket_prenotazione_esame) {
+
+void RiceviMatricola(int segreteria_connessione_socket, int socket_prenotazione_esame)
+{
     char matricola[11]; // Array per la matricola, massimo 10 caratteri + terminatore nullo
 
     // Ricezione della matricola dallo studente
-    ssize_t MatricolaStudente = read(segreteria_connessione_socket, matricola, sizeof(matricola) - 1); // Leggi fino a 10 caratteri
-    if (MatricolaStudente <= 0) {
-        if (MatricolaStudente == 0) {
+    ssize_t MatricolaStudente = read(segreteria_connessione_socket, matricola, sizeof(matricola)); // Leggi fino a 10 caratteri
+    if (MatricolaStudente <= 0)
+    {
+        if (MatricolaStudente == 0)
+        {
             fprintf(stderr, "Connessione chiusa dallo studente durante la ricezione della matricola.\n");
-        } else {
+        }
+        else
+        {
             perror("Errore ricezione matricola dallo studente");
         }
         exit(EXIT_FAILURE);
@@ -163,27 +210,34 @@ void RiceviMatricola(int segreteria_connessione_socket, int socket_prenotazione_
     matricola[MatricolaStudente] = '\0'; // Aggiungi il terminatore nullo alla fine
 
     // Invia la matricola al server universitario
-    if (write(socket_prenotazione_esame, matricola, sizeof(matricola)) != sizeof(matricola)) {
+    if (write(socket_prenotazione_esame, matricola, sizeof(matricola)) != sizeof(matricola))
+    {
         perror("Errore invio matricola al server universitario");
         exit(EXIT_FAILURE);
     }
 }
 
-void EsitoPrenotazione(int segreteria_connessione_socket, int socket_prenotazione_esame) {
+void EsitoPrenotazione(int segreteria_connessione_socket, int socket_prenotazione_esame)
+{
     int esito_prenotazione;
-    
-    if (read(socket_prenotazione_esame, &esito_prenotazione, sizeof(esito_prenotazione)) <= 0) {
+
+    if (read(socket_prenotazione_esame, &esito_prenotazione, sizeof(esito_prenotazione)) <= 0)
+    {
         perror("Errore ricezione esito prenotazione dal server universitario");
         exit(EXIT_FAILURE);
     }
-    
-    if (write(segreteria_connessione_socket, &esito_prenotazione, sizeof(esito_prenotazione)) != sizeof(esito_prenotazione)) {
+
+    if (write(segreteria_connessione_socket, &esito_prenotazione, sizeof(esito_prenotazione)) != sizeof(esito_prenotazione))
+    {
         perror("Errore invio esito prenotazione allo studente");
         exit(EXIT_FAILURE);
     }
 }
 
-int ascolto_studenti(struct sockaddr_in *indirizzo_segreteria) {
+//////////////////////////////////////////////////
+
+int ascolto_studenti(struct sockaddr_in *indirizzo_segreteria)
+{
     int segreteria_ascolto_socket = Socket(AF_INET, SOCK_STREAM, 0);
 
     indirizzo_segreteria->sin_family = AF_INET;
@@ -196,7 +250,8 @@ int ascolto_studenti(struct sockaddr_in *indirizzo_segreteria) {
     return segreteria_ascolto_socket;
 }
 
-void esami_disponibili(struct Esame esame, int segreteria_connessione_socket) {
+void esami_disponibili(struct Esame esame, int segreteria_connessione_socket)
+{
     int socket_esami;
     struct sockaddr_in indirizzo_universita;
     struct Richiesta ricezione_esami;
@@ -210,28 +265,32 @@ void esami_disponibili(struct Esame esame, int segreteria_connessione_socket) {
     invio_esame_server(socket_esami, ricezione_esami);
 
     // Riceviamo il numero di esami dal server universitario
-    if (read(socket_esami, &numero_esami, sizeof(numero_esami)) != sizeof(numero_esami)) {
+    if (read(socket_esami, &numero_esami, sizeof(numero_esami)) != sizeof(numero_esami))
+    {
         perror("Errore ricezione numero esami dal server universitario");
         close(socket_esami);
         exit(EXIT_FAILURE);
     }
 
     // Inviamo il numero di esami allo studente
-    if (write(segreteria_connessione_socket, &numero_esami, sizeof(numero_esami)) != sizeof(numero_esami)) {
+    if (write(segreteria_connessione_socket, &numero_esami, sizeof(numero_esami)) != sizeof(numero_esami))
+    {
         perror("Errore invio numero esami allo studente");
         close(socket_esami);
         exit(EXIT_FAILURE);
     }
 
     // Riceviamo gli esami disponibili dal server universitario
-    if (read(socket_esami, esami_disponibili, sizeof(struct Esame) * numero_esami) != sizeof(struct Esame) * numero_esami) {
+    if (read(socket_esami, esami_disponibili, sizeof(struct Esame) * numero_esami) != sizeof(struct Esame) * numero_esami)
+    {
         perror("Errore ricezione lista esami dal server universitario");
         close(socket_esami);
         exit(EXIT_FAILURE);
     }
 
     // Inviamo la lista di esami disponibili allo studente
-    if (write(segreteria_connessione_socket, esami_disponibili, sizeof(struct Esame) * numero_esami) != sizeof(struct Esame) * numero_esami) {
+    if (write(segreteria_connessione_socket, esami_disponibili, sizeof(struct Esame) * numero_esami) != sizeof(struct Esame) * numero_esami)
+    {
         perror("Errore invio lista esami allo studente");
         close(socket_esami);
         exit(EXIT_FAILURE);
@@ -240,30 +299,35 @@ void esami_disponibili(struct Esame esame, int segreteria_connessione_socket) {
     printf("Lista esami inviata allo studente\n");
 }
 
-int connessione_universita(struct sockaddr_in *indirizzo_universita) {
+int connessione_universita(struct sockaddr_in *indirizzo_universita)
+{
     int socket_esami = Socket(AF_INET, SOCK_STREAM, 0);
 
     indirizzo_universita->sin_family = AF_INET;
     indirizzo_universita->sin_port = htons(6940);
 
-    if (inet_pton(AF_INET, "127.0.0.1", &indirizzo_universita->sin_addr) <= 0) {
+    if (inet_pton(AF_INET, "127.0.0.1", &indirizzo_universita->sin_addr) <= 0)
+    {
         perror("Errore inet 127.0.0.1");
         exit(EXIT_FAILURE);
     }
 
-    Connetti(socket_esami, (struct sockaddr *) indirizzo_universita, sizeof(*indirizzo_universita));
+    Connetti(socket_esami, (struct sockaddr *)indirizzo_universita, sizeof(*indirizzo_universita));
 
     return socket_esami;
 }
 
-void invio_esame_server(int socket_esami, struct Richiesta ricezione_esami) {
-    if (write(socket_esami, &ricezione_esami, sizeof(ricezione_esami)) != sizeof(ricezione_esami)) {
+void invio_esame_server(int socket_esami, struct Richiesta ricezione_esami)
+{
+    if (write(socket_esami, &ricezione_esami, sizeof(ricezione_esami)) != sizeof(ricezione_esami))
+    {
         perror("Errore invio esame");
         exit(EXIT_FAILURE);
     }
 }
 
-void inserisci_nuovo_esame() {
+void inserisci_nuovo_esame()
+{
     struct Esame nuovo_esame;
 
     printf("Inserisci il nome dell'esame: ");
@@ -277,7 +341,8 @@ void inserisci_nuovo_esame() {
     mandaEsameNuovoServer(nuovo_esame);
 }
 
-void mandaEsameNuovoServer(struct Esame esame) {
+void mandaEsameNuovoServer(struct Esame esame)
+{
     int socket_segreteria;
     struct sockaddr_in indirizzo_universita;
     struct Richiesta aggiuntaEsame;
@@ -287,7 +352,8 @@ void mandaEsameNuovoServer(struct Esame esame) {
 
     socket_segreteria = connessione_universita(&indirizzo_universita);
 
-    if (write(socket_segreteria, &aggiuntaEsame, sizeof(aggiuntaEsame)) != sizeof(aggiuntaEsame)) {
+    if (write(socket_segreteria, &aggiuntaEsame, sizeof(aggiuntaEsame)) != sizeof(aggiuntaEsame))
+    {
         perror("Errore manda esame server");
         exit(EXIT_FAILURE);
     }

@@ -10,13 +10,15 @@
 // Chiede alla segreteria se ci siano esami disponibili per un corso
 // Invia una richiesta di prenotazione di un esame alla segreteria
 
-// Definizione della struct 
-struct Esame {
+// Definizione della struct
+struct Esame
+{
     char nome[100];
     char data[100];
 };
 
-struct Richiesta {
+struct Richiesta
+{
     int TipoRichiesta;
     struct Esame esame;
 };
@@ -24,36 +26,41 @@ struct Richiesta {
 // Dichiarazioni delle funzioni
 int numeroPrenotazione(int socket_studente, int *numero_prenotazione);
 void mandaMatricola(int socket_studente, char *matricola);
-void mandaEsamePrenotazione(int socket_studente, struct Esame *esameDaPrenotare);
+void mandaEsamePrenotazione(int socket_studente, struct Esame esameDaPrenotare);
 int ConnessioneSegreteria(int *socket_studente, struct sockaddr_in *indirizzo_server_segreteria);
 void riceviListaEsami(int socket_studente, int numero_esami, struct Esame *esameCercato);
 int conto_esami(int socket_studente, int *numero_esami);
 
-int main() {
+int main()
+{
     int socket_studente;
     struct sockaddr_in indirizzo_server_segreteria;
     struct Richiesta richiesta_studente = {};
     int numero_esami = 0;
     struct Esame *esameCercato = NULL;
-    
+
     printf("\nConnesso alla segreteria Esse4!\n");
-    
-    while (1) {
+
+    while (1)
+    {
         printf("\n\n1 - Vedi esami disponibili \n2 - Prenota un esame\n");
         printf("Scelta: ");
         scanf("%d", &richiesta_studente.TipoRichiesta);
         getchar(); // Pulisce il buffer di input
 
-        if (richiesta_studente.TipoRichiesta == 1) {
+        if (richiesta_studente.TipoRichiesta == 1)
+        {
 
             printf("Nome esame che vuoi cercare: ");
             fgets(richiesta_studente.esame.nome, sizeof(richiesta_studente.esame.nome), stdin);
             richiesta_studente.esame.nome[strcspn(richiesta_studente.esame.nome, "\n")] = '\0'; // Rimuove il newline
 
-            if (strlen(richiesta_studente.esame.nome) > 0) {
+            if (strlen(richiesta_studente.esame.nome) > 0)
+            {
                 socket_studente = ConnessioneSegreteria(&socket_studente, &indirizzo_server_segreteria);
 
-                if (write(socket_studente, &richiesta_studente, sizeof(richiesta_studente)) != sizeof(richiesta_studente)) {
+                if (write(socket_studente, &richiesta_studente, sizeof(richiesta_studente)) != sizeof(richiesta_studente))
+                {
                     perror("Errore invio richiesta esami");
                     close(socket_studente);
                     exit(1);
@@ -61,45 +68,63 @@ int main() {
 
                 numero_esami = conto_esami(socket_studente, &numero_esami);
 
-                if (numero_esami > 0) {
+                if (numero_esami > 0)
+                {
                     esameCercato = (struct Esame *)malloc(sizeof(struct Esame) * numero_esami);
-                    if (esameCercato == NULL) {
+                    if (esameCercato == NULL)
+                    {
                         perror("Errore di allocazione memoria");
                         close(socket_studente);
                         exit(1);
                     }
-                    
+
                     riceviListaEsami(socket_studente, numero_esami, esameCercato);
 
                     printf("Numero\tNome\tData\n");
                     printf("-----------------\n");
 
-                    for (int i = 0; i < numero_esami; i++) {
+                    for (int i = 0; i < numero_esami; i++)
+                    {
                         printf("%d\t%s\t%s\n", i + 1, esameCercato[i].nome, esameCercato[i].data);
                     }
-                    
+
                     free(esameCercato);
-                } else {
+                }
+                else
+                {
                     printf("Non ci sono esami disponibili per il corso cercato.\n");
                 }
 
                 close(socket_studente);
             }
-        } else if (richiesta_studente.TipoRichiesta == 2) {
+        }
+        else if (richiesta_studente.TipoRichiesta == 2)
+        {
+            printf("Nome esame che vuoi prenotare: ");
+            fgets(richiesta_studente.esame.nome, sizeof(richiesta_studente.esame.nome), stdin);
+            richiesta_studente.esame.nome[strcspn(richiesta_studente.esame.nome, "\n")] = '\0'; // Rimuove il newline
 
             socket_studente = ConnessioneSegreteria(&socket_studente, &indirizzo_server_segreteria);
 
-            if (write(socket_studente, &richiesta_studente, sizeof(richiesta_studente)) != sizeof(richiesta_studente)) {
+            if (write(socket_studente, &richiesta_studente, sizeof(richiesta_studente)) != sizeof(richiesta_studente))
+            {
                 perror("Errore invio richiesta prenotazione");
                 close(socket_studente);
                 exit(1);
             }
 
+            printf("Inizio conto esami\n");
+
             numero_esami = conto_esami(socket_studente, &numero_esami);
 
-            if (numero_esami > 0) {
+            printf("Ho contato gli esami\n");
+
+            if (numero_esami > 0)
+            {
+                printf("Numero esami: %d\n", numero_esami);
                 esameCercato = (struct Esame *)malloc(sizeof(struct Esame) * numero_esami);
-                if (esameCercato == NULL) {
+                if (esameCercato == NULL)
+                {
                     perror("Errore di allocazione memoria");
                     close(socket_studente);
                     exit(1);
@@ -110,7 +135,8 @@ int main() {
                 printf("Numero\tNome\tData\n");
                 printf("-----------------\n");
 
-                for (int i = 0; i < numero_esami; i++) {
+                for (int i = 0; i < numero_esami; i++)
+                {
                     printf("%d\t%s\t%s\n", i + 1, esameCercato[i].nome, esameCercato[i].data);
                 }
 
@@ -119,7 +145,8 @@ int main() {
                 scanf("%d", &scelta_esame);
                 getchar(); // Pulisce il buffer di input
 
-                if (scelta_esame > 0 && scelta_esame <= numero_esami) {
+                if (scelta_esame > 0 && scelta_esame <= numero_esami)
+                {
                     char matricola[11];
                     printf("Inserisci la tua matricola: ");
                     fgets(matricola, sizeof(matricola), stdin);
@@ -127,14 +154,17 @@ int main() {
 
                     struct Esame esameDaPrenotare = esameCercato[scelta_esame - 1];
 
-                    mandaEsamePrenotazione(socket_studente, &esameDaPrenotare);
+                    printf("Data esame %s\n", esameDaPrenotare.data);
                     mandaMatricola(socket_studente, matricola);
+                    mandaEsamePrenotazione(socket_studente, esameDaPrenotare);
 
                     int numero_prenotazione;
                     numeroPrenotazione(socket_studente, &numero_prenotazione);
 
                     printf("Prenotazione completata con successo. Il tuo numero di prenotazione è: %d\n", numero_prenotazione);
-                } else {
+                }
+                else
+                {
                     printf("Scelta non valida.\n");
                 }
 
@@ -148,8 +178,10 @@ int main() {
     return 0;
 }
 
-int numeroPrenotazione(int socket_studente, int *numero_prenotazione) {
-    if (read(socket_studente, numero_prenotazione, sizeof(*numero_prenotazione)) != sizeof(*numero_prenotazione)) {
+int numeroPrenotazione(int socket_studente, int *numero_prenotazione)
+{
+    if (read(socket_studente, numero_prenotazione, sizeof(*numero_prenotazione)) != sizeof(*numero_prenotazione))
+    {
         perror("Errore ricezione numero prenotazione");
         exit(1);
     }
@@ -157,27 +189,33 @@ int numeroPrenotazione(int socket_studente, int *numero_prenotazione) {
 }
 
 void mandaMatricola(int socket_studente, char *matricola) {
-    if (write(socket_studente, matricola, sizeof(matricola)) != sizeof(matricola)) {
+    // Usa strlen(matricola) + 1 per includere il terminatore nullo
+    size_t length = strlen(matricola); // +1 per includere il terminatore nullo
+    if (write(socket_studente, matricola, length) != length) {
         perror("Errore invio matricola");
         exit(1);
     }
 }
 
 
-void mandaEsamePrenotazione(int socket_studente, struct Esame *esameDaPrenotare) {
-    if (write(socket_studente, esameDaPrenotare, sizeof(struct Esame)) != sizeof(struct Esame)) {
+void mandaEsamePrenotazione(int socket_studente, struct Esame esameDaPrenotare)
+{
+    if (write(socket_studente, &esameDaPrenotare, sizeof(struct Esame)) != sizeof(struct Esame))
+    {
         perror("Errore invio esame prenotazione");
         exit(1);
     }
 }
 
-int ConnessioneSegreteria(int *socket_studente, struct sockaddr_in *indirizzo_server_segreteria) {
+int ConnessioneSegreteria(int *socket_studente, struct sockaddr_in *indirizzo_server_segreteria)
+{
     *socket_studente = Socket(AF_INET, SOCK_STREAM, 0);
 
     indirizzo_server_segreteria->sin_family = AF_INET;
     indirizzo_server_segreteria->sin_port = htons(2000);
 
-    if (inet_pton(AF_INET, "127.0.0.1", &indirizzo_server_segreteria->sin_addr) <= 0) {
+    if (inet_pton(AF_INET, "127.0.0.1", &indirizzo_server_segreteria->sin_addr) <= 0)
+    {
         perror("Errore inet_pton");
         exit(1);
     }
@@ -186,15 +224,19 @@ int ConnessioneSegreteria(int *socket_studente, struct sockaddr_in *indirizzo_se
     return *socket_studente;
 }
 
-void riceviListaEsami(int socket_studente, int numero_esami, struct Esame *esameCercato) {
-    if (read(socket_studente, esameCercato, sizeof(struct Esame) * numero_esami) != sizeof(struct Esame) * numero_esami) {
+void riceviListaEsami(int socket_studente, int numero_esami, struct Esame *esameCercato)
+{
+    if (read(socket_studente, esameCercato, sizeof(struct Esame) * numero_esami) != sizeof(struct Esame) * numero_esami)
+    {
         perror("Errore ricezione lista esami");
         exit(1);
     }
 }
 
-int conto_esami(int socket_studente, int *numero_esami) {
-    if (read(socket_studente, numero_esami, sizeof(*numero_esami)) != sizeof(*numero_esami)) {
+int conto_esami(int socket_studente, int *numero_esami)
+{
+    if (read(socket_studente, numero_esami, sizeof(*numero_esami)) != sizeof(*numero_esami))
+    {
         perror("Errore ricezione numero esami");
         exit(1);
     }
