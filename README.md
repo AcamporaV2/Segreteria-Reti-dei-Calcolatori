@@ -1,5 +1,6 @@
 
-# progetto_reti_di_calcolatori
+# Progetto Reti dei Calcolatori 2023/2024 
+# Gruppo 3 studenti
 
 ## Traccia - Università
 Scrivere un'applicazione client/server parallelo per gestire gli esami universitari.
