@@ -1,9 +1,5 @@
-ASD,Mammt
-ASD,Patt
-Sistemi, Nonnt
-Matematica,2
-Calcolo,TuaMamma
-Fisica,Ieri
-League,22-01-2020
-Prog1,ForzaNapoli
-Napoli,Pizza
+Sistemi, 09-11-2025
+ASD,10-10-2024
+ASD,25-01-2025
+Sistemi,24-12-2024
+Fisica,12-11-2024

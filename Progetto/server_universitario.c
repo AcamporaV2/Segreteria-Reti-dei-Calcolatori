@@ -38,10 +38,10 @@ int incrementaContatoreDaPrenotazioni(struct Esame esame);
 
 int main()
 {
-    int universita_connessione_socket;
-    int universita_ascolto_socket;
-    struct sockaddr_in indirizzo_universita;
-    struct Richiesta richiesta_ricevuta;
+    int universita_connessione_socket;       // Socket per la connessione con la segreteria
+    int universita_ascolto_socket;           // Socket per l'ascolto delle connessioni in ingresso
+    struct sockaddr_in indirizzo_universita; // Indirizzo del server universitario
+    struct Richiesta richiesta_ricevuta;     // Richiesta ricevuta dalla segreteria
 
     // Creazione del socket di ascolto
     universita_ascolto_socket = Socket(AF_INET, SOCK_STREAM, 0);
@@ -57,6 +57,7 @@ int main()
     Ascolta(universita_ascolto_socket, 10);
     printf("Server in ascolto sulla porta 6940...\n");
 
+    // Ciclo per gestire le richieste in ingresso
     while (1)
     {
         // Accettazione di una connessione in ingresso
@@ -83,21 +84,21 @@ int main()
                 exit(EXIT_FAILURE);
             }
 
-            // Gestione della richiesta in base al tipo
+            // Gestione della richiesta in base al tipo della richiesta
             if (richiesta_ricevuta.TipoRichiesta == 1)
             {
 
-                aggiungi_esame_file(richiesta_ricevuta.esame);
+                aggiungi_esame_file(richiesta_ricevuta.esame); // Aggiungi l'esame al file
             }
             else if (richiesta_ricevuta.TipoRichiesta == 2)
             {
 
-                gestisci_prenotazione(universita_connessione_socket, richiesta_ricevuta);
+                gestisci_prenotazione(universita_connessione_socket, richiesta_ricevuta); // Gestisci la prenotazione
             }
             else if (richiesta_ricevuta.TipoRichiesta == 3)
             {
 
-                gestisci_esami_disponibili(universita_connessione_socket, richiesta_ricevuta);
+                gestisci_esami_disponibili(universita_connessione_socket, richiesta_ricevuta); // Gestisci gli esami disponibili
             }
             else
             {
@@ -141,20 +142,18 @@ void aggiungi_esame_file(struct Esame esame)
     printf("Esame aggiunto con successo\n");
 }
 
-/////////////////////////
+// Funzione per gestire la prenotazione di un esame
 int gestisci_prenotazione(int universita_connessione_socket, struct Richiesta richiesta_ricevuta)
 {
     struct Prenotazione prenotazione;
     int esito_prenotazione = 1;
-    // static int numPrenotazioneCounter = 1; //variabile globale per il numero di prenotazioni
 
     prenotazione.esame = richiesta_ricevuta.esame;
-    //prenotazione.NumPrenotazione = 10;
 
     // Ottieni un numero di prenotazione unico per l'esame specifico dal file `prenotazioni.txt`
     prenotazione.NumPrenotazione = incrementaContatoreDaPrenotazioni(richiesta_ricevuta.esame);
 
-    printf("NUMERO PRENOTAZIONE DEBUG: %d\n", prenotazione.NumPrenotazione);
+    printf("Numero prenotazione assegnato: %d\n", prenotazione.NumPrenotazione);
 
     // Ricezione della matricola dallo studente tramite la segreteria
     ssize_t MatricolaStudente = read(universita_connessione_socket, prenotazione.Matricola, sizeof(prenotazione.Matricola) - 1);
@@ -162,7 +161,7 @@ int gestisci_prenotazione(int universita_connessione_socket, struct Richiesta ri
     {
         if (MatricolaStudente == 0)
         {
-            fprintf(stderr, "Connessione chiusa dalla segreteria durante la ricezione della matricola.\n");
+            fprintf(stderr, "\nConnessione chiusa dalla segreteria durante la ricezione della matricola.\n");
         }
         else
         {
@@ -171,12 +170,10 @@ int gestisci_prenotazione(int universita_connessione_socket, struct Richiesta ri
         return -1;
     }
 
+    // Aggiungi il terminatore di stringa
     prenotazione.Matricola[MatricolaStudente] = '\0';
 
-    // Assegna i dati dell'esame correttamente alla prenotazione
-    // prenotazione.esame = richiesta_ricevuta.esame;
-    // prenotazione.NumPrenotazione = numPrenotazioneCounter++;
-
+    // Invia il numero di prenotazione alla segreteria
     ssize_t numero_prenotazione = write(universita_connessione_socket, &prenotazione.NumPrenotazione, sizeof(prenotazione.NumPrenotazione));
     if (numero_prenotazione != sizeof(prenotazione.NumPrenotazione))
     {
@@ -184,7 +181,7 @@ int gestisci_prenotazione(int universita_connessione_socket, struct Richiesta ri
         return -1;
     }
 
-    printf("Prenotazione ricevuta per esame: %s, data: %s, matricola: %s, numero:%d\n", prenotazione.esame.nome, prenotazione.esame.data, prenotazione.Matricola, prenotazione.NumPrenotazione);
+    printf("\nPrenotazione ricevuta per esame: %s, data: %s, matricola: %s, numero:%d\n", prenotazione.esame.nome, prenotazione.esame.data, prenotazione.Matricola, prenotazione.NumPrenotazione);
 
     // Scrivi la prenotazione nel file "prenotazioni.txt"
     FILE *file_prenotazioni = fopen("prenotazioni.txt", "a");
@@ -203,6 +200,7 @@ int gestisci_prenotazione(int universita_connessione_socket, struct Richiesta ri
                 prenotazione.Matricola);
         fclose(file_prenotazioni);
     }
+    printf("\nPrenotazione conclusa, invio alla segreteria\n");
 
     // Invia l'esito della prenotazione
     ssize_t bytes_written = write(universita_connessione_socket, &esito_prenotazione, sizeof(esito_prenotazione));
@@ -215,11 +213,12 @@ int gestisci_prenotazione(int universita_connessione_socket, struct Richiesta ri
     return 0;
 }
 
-
 // Funzione per trovare e incrementare il contatore di prenotazione per un esame specifico
-int incrementaContatoreDaPrenotazioni(struct Esame esame) {
+int incrementaContatoreDaPrenotazioni(struct Esame esame)
+{
     FILE *file = fopen("prenotazioni.txt", "r");
-    if (file == NULL) {
+    if (file == NULL)
+    {
         // Se il file non esiste, inizializza il contatore a 1
         return 1;
     }
@@ -228,17 +227,20 @@ int incrementaContatoreDaPrenotazioni(struct Esame esame) {
     int maxContatore = 0;
 
     // Leggi ogni riga del file e cerca le prenotazioni per l'esame specifico
-    while (fgets(buffer, sizeof(buffer), file) != NULL) {
+    while (fgets(buffer, sizeof(buffer), file) != NULL)
+    {
         struct Esame esameFile;
         int contatore;
         char matricola[11];
-        
+
         // Supponendo che il file `prenotazioni.txt` abbia il formato: numero, nome, data, matricola
         sscanf(buffer, "%d,%99[^,],%99[^,],%10s", &contatore, esameFile.nome, esameFile.data, matricola);
 
         // Controlla se l'esame corrente nel file corrisponde a quello passato alla funzione
-        if (strcmp(esameFile.nome, esame.nome) == 0 && strcmp(esameFile.data, esame.data) == 0) {
-            if (contatore > maxContatore) {
+        if (strcmp(esameFile.nome, esame.nome) == 0 && strcmp(esameFile.data, esame.data) == 0)
+        {
+            if (contatore > maxContatore)
+            {
                 maxContatore = contatore;
             }
         }
@@ -248,10 +250,10 @@ int incrementaContatoreDaPrenotazioni(struct Esame esame) {
     return maxContatore + 1; // Incrementa di uno per il nuovo numero di prenotazione
 }
 
-
+// Funzione per gestire la richiesta di esami disponibili
 void gestisci_esami_disponibili(int socket, struct Richiesta richiesta_ricevuta)
 {
-    FILE *Lista_esami = fopen("esami.txt", "r");
+    FILE *Lista_esami = fopen("esami.txt", "r"); // Apriamo il file degli esami
     struct Esame esami_disponibili[100]; // Supponiamo un massimo di 100 esami
     int numero_esami = 0;
     char nome[100], data[100];
@@ -267,12 +269,13 @@ void gestisci_esami_disponibili(int socket, struct Richiesta richiesta_ricevuta)
     {
         if (strcmp(nome, richiesta_ricevuta.esame.nome) == 0)
         {
+            //Copia i dati dell'esame
             strcpy(esami_disponibili[numero_esami].nome, nome);
             strcpy(esami_disponibili[numero_esami].data, data);
             numero_esami++;
         }
     }
-    fclose(Lista_esami);
+    fclose(Lista_esami); // Chiudiamo il file
 
     // Inviamo il numero di esami disponibili alla segreteria
     if (write(socket, &numero_esami, sizeof(numero_esami)) != sizeof(numero_esami))
