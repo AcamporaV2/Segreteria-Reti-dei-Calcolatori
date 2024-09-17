@@ -139,7 +139,7 @@ void aggiungi_esame_file(struct Esame esame)
     }
 
     fclose(Lista_esami);
-    printf("Esame aggiunto con successo\n");
+    printf("\n--------------------------------------------\nEsame aggiunto con successo\n--------------------------------------------");
 }
 
 // Funzione per gestire la prenotazione di un esame
@@ -153,7 +153,7 @@ int gestisci_prenotazione(int universita_connessione_socket, struct Richiesta ri
     // Ottieni un numero di prenotazione unico per l'esame specifico dal file `prenotazioni.txt`
     prenotazione.NumPrenotazione = incrementaContatoreDaPrenotazioni(richiesta_ricevuta.esame);
 
-    printf("Numero prenotazione assegnato: %d\n", prenotazione.NumPrenotazione);
+    printf("\n--------------------------------------------\nNumero prenotazione assegnato: %d\n", prenotazione.NumPrenotazione);
 
     // Ricezione della matricola dallo studente tramite la segreteria
     ssize_t MatricolaStudente = read(universita_connessione_socket, prenotazione.Matricola, sizeof(prenotazione.Matricola) - 1);
@@ -181,7 +181,7 @@ int gestisci_prenotazione(int universita_connessione_socket, struct Richiesta ri
         return -1;
     }
 
-    printf("\nPrenotazione ricevuta per esame: %s, data: %s, matricola: %s, numero:%d\n", prenotazione.esame.nome, prenotazione.esame.data, prenotazione.Matricola, prenotazione.NumPrenotazione);
+    printf("Prenotazione ricevuta per esame: %s, data: %s, matricola: %s, numero:%d", prenotazione.esame.nome, prenotazione.esame.data, prenotazione.Matricola, prenotazione.NumPrenotazione);
 
     // Scrivi la prenotazione nel file "prenotazioni.txt"
     FILE *file_prenotazioni = fopen("prenotazioni.txt", "a");
@@ -200,7 +200,7 @@ int gestisci_prenotazione(int universita_connessione_socket, struct Richiesta ri
                 prenotazione.Matricola);
         fclose(file_prenotazioni);
     }
-    printf("\nPrenotazione conclusa, invio alla segreteria\n");
+    printf("\nPrenotazione conclusa, invio alla segreteria\n--------------------------------------------\n");
 
     // Invia l'esito della prenotazione
     ssize_t bytes_written = write(universita_connessione_socket, &esito_prenotazione, sizeof(esito_prenotazione));

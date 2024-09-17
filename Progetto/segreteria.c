@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <ctype.h>
 #include "wrapper.h"
 
 // Definizione delle struct
@@ -60,7 +61,7 @@ int main()
         }
         else if (scelta == 2) // Ascolto delle richieste degli studenti
         {
-            printf("Ascolto studenti sulla porta 2000...\n");
+            printf("\nAscolto studenti sulla porta 2000...\n");
 
             // Processo figlio per gestire le richieste in modo continuo
             pid_t pid = fork();
@@ -114,7 +115,7 @@ int main()
                         EsitoPrenotazione(segreteria_connessione_socket, socket_prenotazione_esame);
                         MandaNumeroPrenotazione(segreteria_connessione_socket, socket_prenotazione_esame);
 
-                        printf("Prenotazione esame completata\n");
+                        printf("Prenotazione esame completata\n--------------------------------------------\n");
 
                         close(socket_prenotazione_esame);
                     }
@@ -179,7 +180,7 @@ void riceviEsame(int socket, struct Esame *esame)
         exit(1);
     }
     // Messaggio per verificare che i dati siano correttamente ricevuti nella segreteria
-    printf(" Ricevuta prenotazione esame: Nome = %s, Data = %s\n", esame->nome, esame->data);
+    printf("Ricevuta prenotazione esame: Nome = %s, Data = %s\n", esame->nome, esame->data);
 }
 
 // Funzione per inviare la richiesta di prenotazione al server universitario
@@ -312,7 +313,7 @@ void esami_disponibili(struct Esame esame, int segreteria_connessione_socket)
         exit(EXIT_FAILURE);
     }
 
-    printf("Lista esami inviata allo studente\n");
+    printf("--------------------------------------------\nLista esami inviata allo studente\n");
 }
 
 // Funzione per connettersi al server universitario
@@ -344,19 +345,48 @@ void invio_esame_server(int socket_esami, struct Richiesta ricezione_esami)
     }
 }
 
+// Funzione per verificare se la data ha il formato DD-MM-YYYY
+int verifica_data(const char *data)
+{
+    // Controlla che il formato sia esattamente DD-MM-YYYY
+    if (strlen(data) != 10 || data[2] != '-' || data[5] != '-')
+    {
+        return 0;
+    }
+
+    // Controlla che giorno, mese e anno siano numeri
+    for (int i = 0; i < 10; i++)
+    {
+        if (i != 2 && i != 5 && !isdigit(data[i]))
+        {
+            return 0;
+        }
+    }
+
+    // La data ha il formato corretto
+    return 1;
+}
+
 // Funzione per inserire un nuovo esame
 void inserisci_nuovo_esame()
 {
     struct Esame nuovo_esame;
 
-    printf("Inserisci il nome dell'esame: ");
+    printf("\n--------------------------------------------\nInserisci il nome dell'esame: ");
     fgets(nuovo_esame.nome, sizeof(nuovo_esame.nome), stdin);
     nuovo_esame.nome[strcspn(nuovo_esame.nome, "\n")] = '\0';
 
-    printf("Inserisci la data dell'esame (DD-MM-YYYY): ");
-    fgets(nuovo_esame.data, sizeof(nuovo_esame.data), stdin);
-    nuovo_esame.data[strcspn(nuovo_esame.data, "\n")] = '\0';
-
+    do
+    {
+        printf("Inserisci la data dell'esame (DD-MM-YYYY): ");
+        fgets(nuovo_esame.data, sizeof(nuovo_esame.data), stdin);
+        nuovo_esame.data[strcspn(nuovo_esame.data, "\n")] = '\0';
+        
+        if (!verifica_data(nuovo_esame.data))
+        {
+            printf("Formato data non valido! Riprova.\n");
+        }
+    } while (!verifica_data(nuovo_esame.data));
     mandaEsameNuovoServer(nuovo_esame);
 }
 
@@ -378,7 +408,7 @@ void mandaEsameNuovoServer(struct Esame esame)
         exit(EXIT_FAILURE);
     }
 
-    printf("Esame aggiunto con successo!\n");
+    printf("Esame aggiunto con successo!\n--------------------------------------------\n");
 
     close(socket_segreteria);
 }
